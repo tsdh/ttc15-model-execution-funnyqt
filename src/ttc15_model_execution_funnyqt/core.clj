@@ -1,7 +1,7 @@
 (ns ttc15-model-execution-funnyqt.core
-  (:require [funnyqt.generic :refer [adjs]]
+  (:require [funnyqt.generic :refer [adj adjs]]
             [funnyqt.emf :refer :all]
-            [funnyqt.query :refer [forall? the]]
+            [funnyqt.query :refer [forall? exists? the]]
             [funnyqt.polyfns :as pf]))
 
 ;;* Load metamodel and generate accessors
@@ -26,12 +26,15 @@
 (defn init-activity [activity]
   (set-nodes-running activity true))
 
-(defn executable-nodes [activity]
+(defn enabled-nodes [activity]
   (filter (fn [n]
             (and (a/running? n)
                  (not (a/isa-InitialNode? n))
-                 (forall? #(seq (a/->offers %))
-                          (a/->incoming n))))
+                 ((if (a/isa-MergeNode? n)
+                    exists?
+                    forall?)
+                  #(seq (a/->offers %))
+                  (a/->incoming n))))
           (a/->nodes activity)))
 
 (defn offer-one-ctrl-token [node]
@@ -61,7 +64,38 @@
           (a/set-remainingOffersCount! ft (dec (a/remainingOffersCount ft))))))
     tokens))
 
-(pf/declare-polyfn eval-exp [exp])
+(def bin-exp2op {(eclassifier 'IntegerCalculationExpression)
+                 {(a/eenum-IntegerCalculationOperator-ADD)     +
+                  (a/eenum-IntegerCalculationOperator-SUBRACT) -}
+                 (eclassifier 'IntegerComparisonExpression)
+                 {(a/eenum-IntegerComparisonOperator-SMALLER)        <
+                  (a/eenum-IntegerComparisonOperator-SMALLER_EQUALS) <=
+                  (a/eenum-IntegerComparisonOperator-EQUALS)         =
+                  (a/eenum-IntegerComparisonOperator-GREATER_EQUALS) >=
+                  (a/eenum-IntegerComparisonOperator-GREATER)        >}
+                 (eclassifier 'BooleanBinaryExpression)
+                 {(a/eenum-BooleanBinaryOperator-AND) #(and %1 %2)
+                  (a/eenum-BooleanBinaryOperator-OR)  #(or  %1 %2)}})
+
+(defn var-val [var]
+  (if-let [cv (a/->currentValue var)]
+    (a/value cv)
+    (-> var a/->initialValue a/value)))
+
+(defn eval-exp [exp]
+  (a/set-value! (let [a (a/->assignee exp)]
+                  (if-let [cv (a/->currentValue a)]
+                    cv
+                    (let [ncv (if (a/isa-IntegerCalculationExpression? exp)
+                                (a/create-IntegerValue! nil)
+                                (a/create-BooleanValue! nil))]
+                      (a/->set-currentValue! a ncv)
+                      ncv)))
+                (if (a/isa-BooleanUnaryExpression? exp)
+                  (not (var-val (a/->operand exp)))
+                  (((-> exp eclass bin-exp2op) (a/operator exp))
+                   (var-val (a/->operand1 exp))
+                   (var-val (a/->operand2 exp))))))
 
 (pf/defpolyfn exec-node OpaqueAction [oa]
   (consume-offers oa)
@@ -103,7 +137,7 @@
   (pass-tokens mn))
 
 (pf/defpolyfn exec-node DecisionNode [dn]
-  (pass-tokens dn (the #(a/value (adjs % :guard :currentValue))
+  (pass-tokens dn (the #(var-val (a/->guard %))
                        (a/->outgoing dn))))
 
 (defn execute-activity-diagram [ad]
@@ -112,10 +146,11 @@
     (a/->set-trace! activity trace)
     (init-variables activity)
     (init-activity activity)
-    (loop [execable-nodes (filter a/isa-InitialNode?
-                                  (a/->nodes activity))]
-      (when (seq execable-nodes)
-        (let [node (first execable-nodes)]
+    (loop [ens (filter a/isa-InitialNode?
+                       (a/->nodes activity))]
+      #_(println "ENs:" ens)
+      (when (seq ens)
+        (let [node (first ens)]
           (exec-node node)
           (a/->add-executedNodes! trace node)
-          (recur (executable-nodes activity)))))))
+          (recur (enabled-nodes activity)))))))
