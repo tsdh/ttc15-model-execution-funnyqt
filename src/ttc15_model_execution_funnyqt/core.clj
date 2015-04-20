@@ -13,9 +13,13 @@
 
 ;;* Solution
 
-(defn init-variables [activity]
-  ;; TODO: Implement me!
-  )
+(defn init-variables [activity input]
+  (doseq [lv (a/->locals activity)]
+    (when-let [init-value (a/->initialValue lv)]
+      (a/->set-currentValue! lv init-value)))
+  (doseq [iv (and input (a/->inputValues input))]
+    (when-let [val (a/->value iv)]
+      (a/->set-currentValue! (a/->variable iv) val))))
 
 (pf/declare-polyfn exec-node [node])
 
@@ -30,9 +34,7 @@
   (filter (fn [n]
             (and (a/running? n)
                  (not (a/isa-InitialNode? n))
-                 ((if (a/isa-MergeNode? n)
-                    exists?
-                    forall?)
+                 ((if (a/isa-MergeNode? n) exists? forall?)
                   #(seq (a/->offers %))
                   (a/->incoming n))))
           (a/->nodes activity)))
@@ -40,29 +42,25 @@
 (defn offer-one-ctrl-token [node]
   (let [ctrl-t (a/create-ControlToken! nil)]
     (doseq [out-cf (a/->outgoing node)]
-      (let [offer  (a/create-Offer! nil)]
+      (let [offer  (a/create-Offer! nil {:offeredTokens [ctrl-t]})]
         (a/->add-heldTokens! node ctrl-t)
-        (a/->add-offers! out-cf offer)
-        (a/->add-offeredTokens! offer ctrl-t)))))
+        (a/->add-offers! out-cf offer)))))
 
 (pf/defpolyfn exec-node InitialNode [i]
   (offer-one-ctrl-token i))
 
 (defn consume-offers [node]
-  (let [in-cfs     (a/->incoming node)
-        offers     (mapcat a/->offers in-cfs)
+  (let [offers     (mapcat a/->offers (a/->incoming node))
         tokens     (mapcat a/->offeredTokens offers)
         [ctrl-toks fork-toks] ((juxt filter remove) a/isa-ControlToken? tokens)]
-    (doseq [x (concat offers ctrl-toks)]
-      (edelete! x))
+    (doseq [o offers] (edelete! o))
+    (doseq [c ctrl-toks] (a/->set-holder! c nil))
     (doseq [ft fork-toks]
-      (let [roc (a/remainingOffersCount ft)]
-        (when-let [bt (a/->baseToken ft)]
-          (edelete! bt))
-        (if (<= roc 1)
-          (edelete! ft)
-          (a/set-remainingOffersCount! ft (dec (a/remainingOffersCount ft))))))
-    tokens))
+      (a/->set-holder! (a/->baseToken ft) nil)
+      (a/set-remainingOffersCount! ft (dec (a/remainingOffersCount ft)))
+      (when (zero? (a/remainingOffersCount ft))
+        (edelete! ft)))
+    (concat ctrl-toks (remove #(zero? (a/remainingOffersCount %)) fork-toks))))
 
 (def bin-exp2op {(eclassifier 'IntegerCalculationExpression)
                  {(a/eenum-IntegerCalculationOperator-ADD)     +
@@ -77,11 +75,6 @@
                  {(a/eenum-BooleanBinaryOperator-AND) #(and %1 %2)
                   (a/eenum-BooleanBinaryOperator-OR)  #(or  %1 %2)}})
 
-(defn var-val [var]
-  (if-let [cv (a/->currentValue var)]
-    (a/value cv)
-    (-> var a/->initialValue a/value)))
-
 (defn eval-exp [exp]
   (a/set-value! (let [a (a/->assignee exp)]
                   (if-let [cv (a/->currentValue a)]
@@ -92,10 +85,24 @@
                       (a/->set-currentValue! a ncv)
                       ncv)))
                 (if (a/isa-BooleanUnaryExpression? exp)
-                  (not (var-val (a/->operand exp)))
-                  (((-> exp eclass bin-exp2op) (a/operator exp))
-                   (var-val (a/->operand1 exp))
-                   (var-val (a/->operand2 exp))))))
+                  (not (-> exp a/->operand a/->currentValue a/value))
+                  (try
+                    (((-> exp eclass bin-exp2op) (a/operator exp))
+                     (-> exp a/->operand1 a/->currentValue a/value)
+                     (-> exp a/->operand2 a/->currentValue a/value))
+                    (catch Exception e
+                      (funnyqt.visualization/print-model (eresource exp) :gtk)
+                      (throw e))))))
+
+(defn ^:private pass-tokens
+  ([n] (pass-tokens n nil))
+  ([n out-cf]
+   (let [in-toks (consume-offers n)]
+     (a/->set-heldTokens! n in-toks)
+     (doseq [out-cf (if out-cf [out-cf] (a/->outgoing n))]
+       (a/->add-offers!
+        out-cf (a/create-Offer!
+                nil {:offeredTokens in-toks}))))))
 
 (pf/defpolyfn exec-node OpaqueAction [oa]
   (consume-offers oa)
@@ -112,23 +119,12 @@
         out-cfs (a/->outgoing fn)
         out-toks (mapv #(a/create-ForkedToken!
                          nil {:baseToken %
+                              :holder fn
                               :remainingOffersCount (count out-cfs)})
                        in-toks)]
     (doseq [out-cf out-cfs]
       (a/->add-offers! out-cf (a/create-Offer!
                                nil {:offeredTokens out-toks})))))
-
-(defn ^:private pass-tokens
-  ([n] (pass-tokens n nil))
-  ([n out-cf]
-   (let [in-toks (consume-offers n)]
-     (a/->set-heldTokens! n in-toks)
-     (doseq [out-cf (if out-cf
-                      [out-cf]
-                      (a/->outgoing n))]
-       (a/->add-offers!
-        out-cf (a/create-Offer!
-                nil {:offeredTokens in-toks}))))))
 
 (pf/defpolyfn exec-node JoinNode [jn]
   (pass-tokens jn))
@@ -137,20 +133,20 @@
   (pass-tokens mn))
 
 (pf/defpolyfn exec-node DecisionNode [dn]
-  (pass-tokens dn (the #(var-val (a/->guard %))
+  (pass-tokens dn (the #(-> % a/->guard a/->currentValue a/value)
                        (a/->outgoing dn))))
 
 (defn execute-activity-diagram [ad]
   (let [activity (first (a/eall-Activities ad))
         trace (a/create-Trace! nil)]
     (a/->set-trace! activity trace)
-    (init-variables activity)
+    (init-variables activity (first (a/eall-Inputs ad)))
     (init-activity activity)
     (loop [ens (filter a/isa-InitialNode?
                        (a/->nodes activity))]
-      #_(println "ENs:" ens)
-      (when (seq ens)
+      (if (seq ens)
         (let [node (first ens)]
           (exec-node node)
           (a/->add-executedNodes! trace node)
-          (recur (enabled-nodes activity)))))))
+          (recur (enabled-nodes activity)))
+        trace))))
