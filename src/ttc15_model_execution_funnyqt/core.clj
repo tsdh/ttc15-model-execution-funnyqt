@@ -21,8 +21,6 @@
     (when-let [val (a/->value iv)]
       (a/->set-currentValue! (a/->variable iv) val))))
 
-(pf/declare-polyfn exec-node [node])
-
 (defn set-nodes-running [activity val]
   (doseq [node (a/->nodes activity)]
     (a/set-running! node val)))
@@ -46,6 +44,8 @@
         (a/->add-heldTokens! node ctrl-t)
         (a/->add-offers! out-cf offer)))))
 
+(pf/declare-polyfn exec-node [node])
+
 (pf/defpolyfn exec-node InitialNode [i]
   (offer-one-ctrl-token i))
 
@@ -63,8 +63,8 @@
     (concat ctrl-toks (remove #(zero? (a/remainingOffersCount %)) fork-toks))))
 
 (def bin-exp2op {(eclassifier 'IntegerCalculationExpression)
-                 {(a/eenum-IntegerCalculationOperator-ADD)     +
-                  (a/eenum-IntegerCalculationOperator-SUBRACT) -}
+                 {(a/eenum-IntegerCalculationOperator-ADD)           +
+                  (a/eenum-IntegerCalculationOperator-SUBRACT)       -}
                  (eclassifier 'IntegerComparisonExpression)
                  {(a/eenum-IntegerComparisonOperator-SMALLER)        <
                   (a/eenum-IntegerComparisonOperator-SMALLER_EQUALS) <=
@@ -72,27 +72,16 @@
                   (a/eenum-IntegerComparisonOperator-GREATER_EQUALS) >=
                   (a/eenum-IntegerComparisonOperator-GREATER)        >}
                  (eclassifier 'BooleanBinaryExpression)
-                 {(a/eenum-BooleanBinaryOperator-AND) #(and %1 %2)
-                  (a/eenum-BooleanBinaryOperator-OR)  #(or  %1 %2)}})
+                 {(a/eenum-BooleanBinaryOperator-AND)                #(and %1 %2)
+                  (a/eenum-BooleanBinaryOperator-OR)                 #(or  %1 %2)}})
 
 (defn eval-exp [exp]
-  (a/set-value! (let [a (a/->assignee exp)]
-                  (if-let [cv (a/->currentValue a)]
-                    cv
-                    (let [ncv (if (a/isa-IntegerCalculationExpression? exp)
-                                (a/create-IntegerValue! nil)
-                                (a/create-BooleanValue! nil))]
-                      (a/->set-currentValue! a ncv)
-                      ncv)))
+  (a/set-value! (-> exp a/->assignee a/->currentValue)
                 (if (a/isa-BooleanUnaryExpression? exp)
                   (not (-> exp a/->operand a/->currentValue a/value))
-                  (try
-                    (((-> exp eclass bin-exp2op) (a/operator exp))
-                     (-> exp a/->operand1 a/->currentValue a/value)
-                     (-> exp a/->operand2 a/->currentValue a/value))
-                    (catch Exception e
-                      (funnyqt.visualization/print-model (eresource exp) :gtk)
-                      (throw e))))))
+                  (((-> exp eclass bin-exp2op) (a/operator exp))
+                   (-> exp a/->operand1 a/->currentValue a/value)
+                   (-> exp a/->operand2 a/->currentValue a/value)))))
 
 (defn ^:private pass-tokens
   ([n] (pass-tokens n nil))
