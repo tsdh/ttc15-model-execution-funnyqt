@@ -99,6 +99,34 @@ For solving the model execution case, the \emph{funnyqt.emf},
 \section{Solution Description}
 \label{sec:solution-description}
 
+The explanations in the case description about the operational semantics on UML
+Activity Diagrams suggest an algorithmic solution to the transformation case.
+The FunnyQT solution tries to be almost a literal translation of the case
+description to Clojure code.
+
+The first line of the solution calls the \code|generate-ecore-model-functions|
+FunnyQT macro.
+
+\begin{clojurecode}
+(generate-ecore-model-functions "activitydiagram.ecore" ttc15-model-execution-funnyqt.ad a)
+\end{clojurecode}
+
+As its name suggests, it generates a metamodel-specific API.  This API is
+generated into the namespace \code|ttc15-model-execution-funnyqt.ad|, and the
+namespace alias \code|a| is used to refer to that namespace from the current
+one.
+
+The generated API consists of element creation functions, lazy element sequence
+functions, attribute access functions, and reference access functions.  For
+example, \code|(a/create-ControlToken! ad)| creates a new control token and
+adds it to the activity diagram model \code|ad|, \code|(a/eall-Inputs ad)|
+returns the lazy sequence of input elements in \code|ad|, \code|(a/running? a)|
+and \code|(a/set-running! a true)| query and set the action \code|a|'s
+\textsf{running} attribute, and \code|(a/->locals a)|, \code|(a/->set-locals! a
+ls)|, and \code|(a/->add-locals! a l)| query, set, and add to the
+\textsf{locals} reference of the activity \code|a|.
+
+
 
 
 

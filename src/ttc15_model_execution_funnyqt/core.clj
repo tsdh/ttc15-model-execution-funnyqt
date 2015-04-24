@@ -7,9 +7,7 @@
 ;;* Load metamodel and generate accessors
 
 (load-ecore-resource "activitydiagram.ecore")
-(generate-ecore-model-functions "activitydiagram.ecore"
-                                ttc15-model-execution-funnyqt.ad
-                                a)
+(generate-ecore-model-functions "activitydiagram.ecore" ttc15-model-execution-funnyqt.ad a)
 
 ;;* Solution
 
@@ -20,13 +18,6 @@
   (doseq+ [iv (and input (a/->inputValues input))]
     (when-let [val (a/->value iv)]
       (a/->set-currentValue! (a/->variable iv) val))))
-
-(defn set-nodes-running [activity val]
-  (doseq+ [node (a/->nodes activity)]
-    (a/set-running! node val)))
-
-(defn init-activity [activity]
-  (set-nodes-running activity true))
 
 (defn enabled-nodes [activity]
   (filter (fn [n]
@@ -99,14 +90,14 @@
 
 (defpolyfn exec-node ActivityFinalNode [afn]
   (consume-offers afn)
-  (set-nodes-running (a/->activity afn) false))
+  (mapc #(a/set-running! % false)
+        (-> afn a/->activity a/->nodes)))
 
 (defpolyfn exec-node ForkNode [fn]
-  (let [in-toks (consume-offers fn)
-        out-cfs (a/->outgoing fn)
+  (let [in-toks  (consume-offers fn)
+        out-cfs  (a/->outgoing fn)
         out-toks (mapv #(a/create-ForkedToken!
-                         nil {:baseToken %
-                              :holder fn
+                         nil {:baseToken %, :holder fn,
                               :remainingOffersCount (count out-cfs)})
                        in-toks)]
     (doseq+ [out-cf out-cfs]
@@ -128,7 +119,7 @@
         trace (a/create-Trace! nil)]
     (a/->set-trace! activity trace)
     (init-variables activity (first (a/eall-Inputs ad)))
-    (init-activity activity)
+    (mapc #(a/set-running! % true) (a/->nodes activity))
     (loop [ens (filter a/isa-InitialNode? (a/->nodes activity))]
       (when (seq ens)
         (doseq+ [node ens]
