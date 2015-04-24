@@ -1,6 +1,5 @@
 (ns ttc15-model-execution-funnyqt.core
-  (:require [funnyqt.generic :refer [adj adjs]]
-            [funnyqt.emf :refer :all]
+  (:require [funnyqt.emf :refer :all]
             [funnyqt.query :refer [forall? exists? the]]
             [funnyqt.polyfns :as pf]
             [funnyqt.utils :refer [doseq+ mapc]]))
@@ -131,8 +130,7 @@
     (a/->set-trace! activity trace)
     (init-variables activity (first (a/eall-Inputs ad)))
     (init-activity activity)
-    (loop [ens (filter a/isa-InitialNode?
-                       (a/->nodes activity))]
+    (loop [ens (filter a/isa-InitialNode? (a/->nodes activity))]
       (if (seq ens)
         (let [node (first ens)]
           (exec-node node)

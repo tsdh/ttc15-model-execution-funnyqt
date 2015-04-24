@@ -9,3 +9,4 @@ pom.xml.asc
 /.nrepl-port
 .hgignore
 .hg/
+*.bst*.log*.out*.pag*.synctex.gz*.auxdoc/auto/doc/_minted-ttc-model-execution/

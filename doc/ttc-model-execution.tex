@@ -1,0 +1,119 @@
+\documentclass[submission]{eptcs}
+\providecommand{\event}{TTC 2015}
+
+\usepackage[T1]{fontenc}
+\usepackage{varioref}
+\usepackage{hyperref}
+
+\usepackage{url}
+\usepackage{paralist}
+\usepackage{graphicx}
+\usepackage[cache]{minted}
+\newminted{clojure}{fontsize=\fontsize{8}{8},linenos,numbersep=3pt,numberblanklines=false}
+\newmintinline{clojure}{fontsize=\small}
+\newcommand{\code}{\clojureinline}
+
+\title{Solving the TTC Model Execution Case with FunnyQT}
+\author{Tassilo Horn
+  \institute{Institute for Software Technology, University Koblenz-Landau, Germany}
+  \email{horn@uni-koblenz.de}}
+
+\def\titlerunning{Solving the TTC Model Execution Case with FunnyQT}
+\def\authorrunning{T. Horn}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  This paper describes the FunnyQT solution to the TTC 2015 Model Execution
+  transformation case.  The solution solves the extended variant 2 (Complex
+  Control Flow) of the case.  FunnyQT is a model querying and model
+  transformation library for the functional Lisp-dialect Clojure providing a
+  comprehensive and efficient querying and transformation API, many parts of
+  which are provided as task-oriented embedded DSLs.
+\end{abstract}
+
+
+\section{Introduction}
+\label{sec:introduction}
+
+This paper describes the FunnyQT\footnote{\url{http://funnyqt.org}}
+~\cite{Horn2013MQWFQ} solution of the TTC 2015 Model Execution
+Case~\cite{model-execution-case-desc}.  It implements the full \emph{complex
+  control flow} variant.  The solution project is available on
+Github\footnote{\url{https://github.com/tsdh/ttc15-model-execution-funnyqt}},
+and it is set up for easy reproduction on a SHARE image\footnote{\url{FIXME:
+    add SHARE URL}}.
+
+FunnyQT is a model querying and transformation library for the functional Lisp
+dialect Clojure\footnote{\url{http://clojure.org}}.  Queries and
+transformations are plain Clojure programs using the features provided by the
+FunnyQT API.
+
+As a Lisp, Clojure provides strong metaprogramming capabilities that are
+exploited by FunnyQT in order to define several \emph{embedded domain-specific
+  languages} (DSL, \cite{book:Fowler2010DSL}) for different querying and
+transformation tasks.
+
+FunnyQT is designed with extensibility in mind.  By default, it supports EMF
+\cite{Steinberg2008EEM} models and
+JGraLab\footnote{\url{http://jgralab.github.io}} TGraph models.  Support for
+other modeling frameworks can be added without having to touch FunnyQT's
+internals.
+
+The FunnyQT API is structured into the following namespaces, each namespace
+providing constructs supporting concrete querying and transformation use-cases:
+
+\begin{compactdesc}
+\item[funnyqt.emf] EMF-specific model management API
+\item[funnyqt.tg] JGraLab/TGraph-specific model management API
+\item[funnyqt.generic] Protocol-based, generic model management API
+\item[funnyqt.query] Generic querying constructs such as quantified expressions
+  or regular path expressions
+\item[funnyqt.polyfns] Constructs for defining polymorphic functions
+  dispatching on metamodel types
+\item[funnyqt.pmatch] Pattern matching constructs
+\item[funnyqt.relational] Constructs for logic-based, relational model querying
+  inspired by Prolog
+\item[funnyqt.in-place] In-place transformation rule definition constructs
+\item[funnyqt.model2model] Out-place transformation definition constructs
+  similar to ATL or QVT Operational Mappings
+\item[funnyqt.extensional] Transformation API similar to GReTL
+\item[funnyqt.bidi] Constructs for defining bidirectional transformations
+  similar to QVT Relations
+\item[funnyqt.coevo] Constructs for transformations that evolve a metamodel and
+  a conforming model simultaneously at runtime
+\item[funnyqt.visualization] Model visualization
+\item[funnyqt.xmltg] Constructs for querying and modifying XML files as models
+  conforming to a DOM-like metamodel
+\end{compactdesc}
+
+For solving the model execution case, the \emph{funnyqt.emf},
+\emph{funnyqt.query}, and \emph{funnyqt.polyfns} namespaces have been used.
+
+
+\section{Solution Description}
+\label{sec:solution-description}
+
+
+\section{Evaluation}
+\label{sec:evaluation}
+
+
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+
+
+\bibliographystyle{eptcs}
+\bibliography{ttc-model-execution}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% TeX-command-extra-options: "-shell-escape"
+%%% End:
+
+%  LocalWords:  parallelizes
