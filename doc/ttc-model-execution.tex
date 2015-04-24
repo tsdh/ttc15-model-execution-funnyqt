@@ -26,11 +26,14 @@
 
 \begin{abstract}
   This paper describes the FunnyQT solution to the TTC 2015 Model Execution
-  transformation case.  The solution solves the extended variant 2 (Complex
-  Control Flow) of the case.  FunnyQT is a model querying and model
-  transformation library for the functional Lisp-dialect Clojure providing a
-  comprehensive and efficient querying and transformation API, many parts of
-  which are provided as task-oriented embedded DSLs.
+  transformation case.  The solution solves the third variant of the case,
+  i.e., it considers and implements the execution semantics of the complete UML
+  Activity Diagram language.
+
+  FunnyQT is a model querying and model transformation library for the
+  functional Lisp-dialect Clojure providing a comprehensive and efficient
+  querying and transformation API, many parts of which are provided as
+  task-oriented embedded DSLs.
 \end{abstract}
 
 
@@ -39,8 +42,9 @@
 
 This paper describes the FunnyQT\footnote{\url{http://funnyqt.org}}
 ~\cite{Horn2013MQWFQ} solution of the TTC 2015 Model Execution
-Case~\cite{model-execution-case-desc}.  It implements the full \emph{complex
-  control flow} variant.  The solution project is available on
+Case~\cite{model-execution-case-desc}.  It implements the third variant of the
+case description, i.e., it implements the execution semantics of the complete
+UML Activity Diagram language.  The solution project is available on
 Github\footnote{\url{https://github.com/tsdh/ttc15-model-execution-funnyqt}},
 and it is set up for easy reproduction on a SHARE image\footnote{\url{FIXME:
     add SHARE URL}}.
@@ -94,6 +98,8 @@ For solving the model execution case, the \emph{funnyqt.emf},
 
 \section{Solution Description}
 \label{sec:solution-description}
+
+
 
 
 \section{Evaluation}

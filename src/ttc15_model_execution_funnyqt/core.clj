@@ -1,7 +1,7 @@
 (ns ttc15-model-execution-funnyqt.core
   (:require [funnyqt.emf :refer :all]
             [funnyqt.query :refer [forall? exists? the]]
-            [funnyqt.polyfns :as pf]
+            [funnyqt.polyfns :refer :all]
             [funnyqt.utils :refer [doseq+ mapc]]))
 
 ;;* Load metamodel and generate accessors
@@ -33,8 +33,7 @@
             (and (a/running? n)
                  (not (a/isa-InitialNode? n))
                  ((if (a/isa-MergeNode? n) exists? forall?)
-                  #(seq (a/->offers %))
-                  (a/->incoming n))))
+                  #(seq (a/->offers %)) (a/->incoming n))))
           (a/->nodes activity)))
 
 (defn offer-one-ctrl-token [node]
@@ -44,9 +43,9 @@
         (a/->add-heldTokens! node ctrl-t)
         (a/->add-offers! out-cf offer)))))
 
-(pf/declare-polyfn exec-node [node])
+(declare-polyfn exec-node [node])
 
-(pf/defpolyfn exec-node InitialNode [i]
+(defpolyfn exec-node InitialNode [i]
   (offer-one-ctrl-token i))
 
 (defn consume-offers [node]
@@ -93,16 +92,16 @@
         out-cf (a/create-Offer!
                 nil {:offeredTokens in-toks}))))))
 
-(pf/defpolyfn exec-node OpaqueAction [oa]
+(defpolyfn exec-node OpaqueAction [oa]
   (consume-offers oa)
   (mapc eval-exp (a/->expressions oa))
   (offer-one-ctrl-token oa))
 
-(pf/defpolyfn exec-node ActivityFinalNode [afn]
+(defpolyfn exec-node ActivityFinalNode [afn]
   (consume-offers afn)
   (set-nodes-running (a/->activity afn) false))
 
-(pf/defpolyfn exec-node ForkNode [fn]
+(defpolyfn exec-node ForkNode [fn]
   (let [in-toks (consume-offers fn)
         out-cfs (a/->outgoing fn)
         out-toks (mapv #(a/create-ForkedToken!
@@ -114,13 +113,13 @@
       (a/->add-offers! out-cf (a/create-Offer!
                                nil {:offeredTokens out-toks})))))
 
-(pf/defpolyfn exec-node JoinNode [jn]
+(defpolyfn exec-node JoinNode [jn]
   (pass-tokens jn))
 
-(pf/defpolyfn exec-node MergeNode [mn]
+(defpolyfn exec-node MergeNode [mn]
   (pass-tokens mn))
 
-(pf/defpolyfn exec-node DecisionNode [dn]
+(defpolyfn exec-node DecisionNode [dn]
   (pass-tokens dn (the #(-> % a/->guard a/->currentValue a/value)
                        (a/->outgoing dn))))
 
@@ -131,9 +130,9 @@
     (init-variables activity (first (a/eall-Inputs ad)))
     (init-activity activity)
     (loop [ens (filter a/isa-InitialNode? (a/->nodes activity))]
-      (if (seq ens)
-        (let [node (first ens)]
+      (when (seq ens)
+        (doseq+ [node ens]
           (exec-node node)
-          (a/->add-executedNodes! trace node)
-          (recur (enabled-nodes activity)))
-        trace))))
+          (a/->add-executedNodes! trace node))
+        (recur (enabled-nodes activity))))
+    trace))
