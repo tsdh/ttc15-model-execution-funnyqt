@@ -120,14 +120,91 @@ The generated API consists of element creation functions, lazy element sequence
 functions, attribute access functions, and reference access functions.  For
 example, \code|(a/create-ControlToken! ad)| creates a new control token and
 adds it to the activity diagram model \code|ad|, \code|(a/eall-Inputs ad)|
-returns the lazy sequence of input elements in \code|ad|, \code|(a/running? a)|
-and \code|(a/set-running! a true)| query and set the action \code|a|'s
+returns the lazy sequence of input elements in \code|ad|, \code|(a/running? n)|
+and \code|(a/set-running! n true)| query and set the node \code|n|'s
 \textsf{running} attribute, and \code|(a/->locals a)|, \code|(a/->set-locals! a
 ls)|, and \code|(a/->add-locals! a l)| query, set, and add to the
 \textsf{locals} reference of the activity \code|a|.
 
+Metamodel-specific APIs created by the \code|generate-ecore-model-functions|
+macro are independent of the underlying implementation kind.  The FunnyQT
+solution uses a dynamic instance model but it would work equivalently if it was
+run with an EMF model using classes generated for the metamodel's generator
+model.
 
+Instead of using the generated API, the solution could also use the generic EMF
+API in which case the lazy sequence of a activity diagram models inputs would
+be retrieved using \code|(eallcontents ad 'Input)|.  But the generated API is
+slightly more concise and readable.
 
+\bigskip{}
+
+In the following, the solution is presented in a top-down manner similar to how
+the case description defines the operational semantics of activity diagrams.
+Listing~\vref{lst:main-loop} shows the function \code|execute-activity-diagram|
+which contains the transformation's main loop.
+
+\begin{listing}[h!tb]
+\begin{clojurecode*}{firstnumber=2}
+(defn execute-activity-diagram [ad]
+  (let [activity (the (a/eall-Activities ad))
+        trace (a/create-Trace! nil)]
+    (a/->set-trace! activity trace)
+    (init-variables activity (first (a/eall-Inputs ad)))
+    (mapc #(a/set-running! % true) (a/->nodes activity))
+    (loop [ens (filter a/isa-InitialNode? (a/->nodes activity))]
+      (when (seq ens)
+        (doseq+ [node ens]
+          (exec-node node)
+          (a/->add-executedNodes! trace node))
+        (recur (enabled-nodes activity))))
+    trace))
+\end{clojurecode*}
+\caption{The main loop of executing activity diagrams}
+\label{lst:main-loop}
+\end{listing}
+
+The function queries the single activity in the diagram, creates a new trace,
+and assigns that to the activity.  Then, the activity's variables are
+initialized and its nodes are set running.
+
+Then, a \code|loop|-\code|recur| iteration\footnote{\code|loop| is not a loop
+  in the sense of Java's \code|for| or \code|while| but a local tail-recursion
+  construct.  The \code|loop| declares variables with their initial bindings,
+  and in the \code|loop|'s body \code|recur| forms may recurse back to the
+  beginning of the \code|loop| providing new bindings for the \code|loop|'s
+  variables.} performs the actual execution of the activity.  The variable
+\code|ens| is bound to the enabled nodes.  Initially, those are the activity's
+initial nodes from which there can only be one.  As long as there are enabled
+nodes left, each node gets executed one after the other and then added to the
+trace.  Thereafter, the loop is restarted with the nodes that are enabled at
+that point in time.  Eventually, there won't be any enabled nodes left, and
+then the function returns the trace.
+
+So the first step in the execution of an activity is the initialization of its
+local and input variables.  The corresponding function \code|init-variables| is
+shown in listing \vref{lst:init-variables}.  For locals, their current value is
+set to their initial value if there is one defined.  For input variables, their
+current value is set to the value of the input's corresponding input value
+element.
+
+\begin{listing}[h!tb]
+\begin{clojurecode*}{firstnumber=15}
+(defn init-variables [activity input]
+  (doseq+ [lv (a/->locals activity)]
+    (when-let [init-value (a/->initialValue lv)]
+      (a/->set-currentValue! lv init-value)))
+  (doseq+ [iv (and input (a/->inputValues input))]
+    (when-let [val (a/->value iv)]
+      (a/->set-currentValue! (a/->variable iv) val))))
+\end{clojurecode*}
+\caption{Initialization of variables}
+\label{lst:init-variables}
+\end{listing}
+
+After initializing the variables, the main function sets the activity's nodes
+running, and the main loop starts with the activities initial node which will
+be executed.
 
 
 \section{Evaluation}

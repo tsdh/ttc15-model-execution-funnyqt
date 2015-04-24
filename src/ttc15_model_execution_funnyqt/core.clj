@@ -115,7 +115,7 @@
                        (a/->outgoing dn))))
 
 (defn execute-activity-diagram [ad]
-  (let [activity (first (a/eall-Activities ad))
+  (let [activity (the (a/eall-Activities ad))
         trace (a/create-Trace! nil)]
     (a/->set-trace! activity trace)
     (init-variables activity (first (a/eall-Inputs ad)))
