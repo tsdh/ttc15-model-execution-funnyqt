@@ -9,7 +9,7 @@
 \usepackage{paralist}
 \usepackage{graphicx}
 \usepackage[cache]{minted}
-\newminted{clojure}{fontsize=\fontsize{8}{8},linenos,numbersep=3pt,numberblanklines=false}
+\newminted{clojure}{fontsize=\fontsize{8}{8},linenos,numbersep=3pt,numberblanklines=false,firstnumber=last}
 \newmintinline{clojure}{fontsize=\small}
 \newcommand{\code}{\clojureinline}
 
@@ -145,7 +145,7 @@ Listing~\vref{lst:main-loop} shows the function \code|execute-activity-diagram|
 which contains the transformation's main loop.
 
 \begin{listing}[h!tb]
-\begin{clojurecode*}{firstnumber=2}
+\begin{clojurecode}
 (defn execute-activity-diagram [ad]
   (let [activity (the (a/eall-Activities ad))
         trace (a/create-Trace! nil)]
@@ -159,7 +159,7 @@ which contains the transformation's main loop.
           (a/->add-executedNodes! trace node))
         (recur (enabled-nodes activity))))
     trace))
-\end{clojurecode*}
+\end{clojurecode}
 \caption{The main loop of executing activity diagrams}
 \label{lst:main-loop}
 \end{listing}
@@ -189,7 +189,7 @@ current value is set to the value of the input's corresponding input value
 element.
 
 \begin{listing}[h!tb]
-\begin{clojurecode*}{firstnumber=15}
+\begin{clojurecode}
 (defn init-variables [activity input]
   (doseq+ [lv (a/->locals activity)]
     (when-let [init-value (a/->initialValue lv)]
@@ -197,14 +197,111 @@ element.
   (doseq+ [iv (and input (a/->inputValues input))]
     (when-let [val (a/->value iv)]
       (a/->set-currentValue! (a/->variable iv) val))))
-\end{clojurecode*}
+\end{clojurecode}
 \caption{Initialization of variables}
 \label{lst:init-variables}
 \end{listing}
 
 After initializing the variables, the main function sets the activity's nodes
-running, and the main loop starts with the activities initial node which will
+running, and the main loop starts with the activity's initial node which will
 be executed.
+
+For different kinds of activity nodes, different execution semantics have to be
+encoded.  This is exactly the use-case of FunnyQT's polymorphic functions
+(polyfn).  A polymorphic function is declared once, and then different
+implementations for instances of different metamodel types can be defined.
+When the polyfn is called, a polymorphic dispatch based on the polyfn's first
+argument's metamodel type is performed to pick out the right
+implementation\footnote{Polyfns support multiple inheritance.  In case of an
+  ambiguity during dispatch, e.g., two or more inherited implementations are
+  applicable, an error is signalled.}.
+
+Listing \vref{lst:exec-node-initial-node} shows the declaration of the polyfn
+\code|exec-node| and its implementation for initial nodes.  The declaration
+only defines the name of the polyfn and the number of its arguments (just one,
+here).  The implementation for initial nodes simply offers one new control
+token to the initial node's outgoing control flow edge.\footnote{The FunnyQT
+  function \code|the| is similar to Clojure's \code|first| except that it
+  signals an error if the given collection contains zero or more than one
+  element.  Thus, it makes the assumption that there must be only one outgoing
+  control flow explicit.}
+
+\begin{listing}[h!tb]
+\begin{clojurecode}
+(declare-polyfn exec-node [node])
+
+(defn offer-one-ctrl-token [node]
+  (let [ctrl-t (a/create-ControlToken! nil)
+        out-cf (the (a/->outgoing node))
+        offer  (a/create-Offer! nil {:offeredTokens [ctrl-t]})]
+    (a/->add-heldTokens! node ctrl-t)
+    (a/->add-offers! out-cf offer)))
+
+(defpolyfn exec-node InitialNode [i]
+  (offer-one-ctrl-token i))
+\end{clojurecode}
+\caption{Declaration of polyfn \code|exec-node| and its implementation for initial nodes}
+\label{lst:exec-node-initial-node}
+\end{listing}
+
+Listing \vref{lst:exec-node-join-merge-decision-node} shows the
+\code|exec-node| implementations for join, merge, and decision nodes.  Join and
+Merge nodes simply consume their input offers and pass the tokens they have
+been offered on all outgoing control flows.  Decision nodes act similar but
+offer their input tokens only on the outgoing control flow whose guard
+variable's current value is true\footnote{\code|(the predicate collection)|
+  returns the single element of the collection for which the predicate returns
+  true.  If there is no or more elements satisfying the predicate, an error is
+  signaled.}.
+
+\begin{listing}[h!tb]
+\begin{clojurecode}
+(defn pass-tokens
+  ([n] (pass-tokens n nil))
+  ([n out-cf]
+   (let [in-toks (consume-offers n)]
+     (a/->set-heldTokens! n in-toks)
+     (doseq+ [out-cf (if out-cf [out-cf] (a/->outgoing n))]
+       (a/->add-offers!
+        out-cf (a/create-Offer!
+                nil {:offeredTokens in-toks}))))))
+
+(defpolyfn exec-node JoinNode [jn]
+  (pass-tokens jn))
+
+(defpolyfn exec-node MergeNode [mn]
+  (pass-tokens mn))
+
+(defpolyfn exec-node DecisionNode [dn]
+  (pass-tokens dn (the #(-> % a/->guard a/->currentValue a/value)
+                       (a/->outgoing dn))))
+\end{clojurecode}
+\caption{\code|exec-node| impls for join, merge, and decision nodes}
+\label{lst:exec-node-join-merge-decision-node}
+\end{listing}
+
+So how does a node consume offers?  This is defined by the
+\code|consume-offers| function shown in listing \vref{lst:consume-offers}.
+
+\begin{listing}[h!tb]
+\begin{clojurecode}
+(defn consume-offers [node]
+  (let [offers (mapcat a/->offers (a/->incoming node))
+        tokens (mapcat a/->offeredTokens offers)
+        [ctrl-toks fork-toks] ((juxt filter remove) a/isa-ControlToken? tokens)]
+    (mapc edelete! offers)
+    (doseq+ [c ctrl-toks] (a/->set-holder! c nil))
+    (doseq+ [ft fork-toks]
+      (a/->set-holder! (a/->baseToken ft) nil)
+      (a/set-remainingOffersCount! ft (dec (a/remainingOffersCount ft)))
+      (when (zero? (a/remainingOffersCount ft))
+        (edelete! ft)))
+    (concat ctrl-toks (remove #(zero? (a/remainingOffersCount %)) fork-toks))))
+\end{clojurecode}
+\caption{Consuming offers}
+\label{lst:consume-offers}
+\end{listing}
+
 
 
 \section{Evaluation}

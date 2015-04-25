@@ -28,11 +28,11 @@
           (a/->nodes activity)))
 
 (defn offer-one-ctrl-token [node]
-  (let [ctrl-t (a/create-ControlToken! nil)]
-    (doseq+ [out-cf (a/->outgoing node)]
-      (let [offer  (a/create-Offer! nil {:offeredTokens [ctrl-t]})]
-        (a/->add-heldTokens! node ctrl-t)
-        (a/->add-offers! out-cf offer)))))
+  (let [ctrl-t (a/create-ControlToken! nil)
+        out-cf (the (a/->outgoing node))
+        offer  (a/create-Offer! nil {:offeredTokens [ctrl-t]})]
+    (a/->add-heldTokens! node ctrl-t)
+    (a/->add-offers! out-cf offer)))
 
 (declare-polyfn exec-node [node])
 
@@ -40,8 +40,8 @@
   (offer-one-ctrl-token i))
 
 (defn consume-offers [node]
-  (let [offers     (mapcat a/->offers (a/->incoming node))
-        tokens     (mapcat a/->offeredTokens offers)
+  (let [offers (mapcat a/->offers (a/->incoming node))
+        tokens (mapcat a/->offeredTokens offers)
         [ctrl-toks fork-toks] ((juxt filter remove) a/isa-ControlToken? tokens)]
     (mapc edelete! offers)
     (doseq+ [c ctrl-toks] (a/->set-holder! c nil))
@@ -73,7 +73,7 @@
                    (-> exp a/->operand1 a/->currentValue a/value)
                    (-> exp a/->operand2 a/->currentValue a/value)))))
 
-(defn ^:private pass-tokens
+(defn pass-tokens
   ([n] (pass-tokens n nil))
   ([n out-cf]
    (let [in-toks (consume-offers n)]
