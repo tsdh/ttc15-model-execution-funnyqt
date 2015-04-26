@@ -18,5 +18,6 @@ and FunnyQT and install them into your local maven repository.
 
 Copyright © 2015 Tassilo Horn <horn@uni-koblenz.de
 
-Distributed under the General Public License, version 3, or at your opinion any
-later version.
+Distributed under the
+[GNU General Public License, version 3](https://www.gnu.org/copyleft/gpl.html),
+or at your opinion any later version.
