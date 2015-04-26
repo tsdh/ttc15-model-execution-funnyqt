@@ -141,8 +141,8 @@ slightly more concise and readable.
 
 In the following, the solution is presented in a top-down manner similar to how
 the case description defines the operational semantics of activity diagrams.
-Listing~\vref{lst:main-loop} shows the function \code|execute-activity-diagram|
-which contains the transformation's main loop.
+Listing~\vref{lst:execute-activity-diagram} shows the function
+\code|execute-activity-diagram| which contains the transformation's main loop.
 
 \begin{listing}[h!tb]
 \begin{clojurecode}
@@ -161,7 +161,7 @@ which contains the transformation's main loop.
     trace))
 \end{clojurecode}
 \caption{The main loop of executing activity diagrams}
-\label{lst:main-loop}
+\label{lst:execute-activity-diagram}
 \end{listing}
 
 The function queries the single activity in the diagram, creates a new trace,
@@ -283,29 +283,29 @@ variable's current value is true\footnote{\code|(the predicate collection)|
 So how does a node consume offers?  This is defined by the
 \code|consume-offers| function shown in listing \vref{lst:consume-offers}.
 First, the offers and the tokens offered by them are calculated.  Then, the
-offered tokens are divided into control and forked tokens.  The offers are
-deleted, and the holder of the control tokens is set to the consuming node.
-For forked tokens, the corresponding base token's holder is unset.  The forked
-tokens' \textsf{remainingOffersCount} is decremented.  If it has become zero
-then, the forked token is deleted.  The return value is the sequence of control
-tokens concatenated with the sequence of forked tokens whose remaining offers
-count is still larger than zero.  Those are the tokens that \code|pass-tokens|
-from listing \vref{lst:exec-node-join-merge-decision-node} passes on.
+offered tokens are divided into control and forked tokens.  For control tokens,
+their holder is unset.  For forked tokens, the corresponding base token's
+holder is unset.  The forked tokens' \textsf{remainingOffersCount} is
+decremented.  If it has become zero then, the forked token is removed from its
+holder.  Lastly, the offers are deleted, and the incoming tokens are returned.
 
 \begin{listing}[h!tb]
 \begin{clojurecode}
 (defn consume-offers [node]
-  (let [offers (mapcat a/->offers (a/->incoming node))
-        tokens (mapcat a/->offeredTokens offers)
-        [ctrl-toks fork-toks] ((juxt filter remove) a/isa-ControlToken? tokens)]
-    (mapc edelete! offers)
-    (doseq+ [c ctrl-toks] (a/->set-holder! c nil))
+  (let [offers    (mapcat a/->offers (a/->incoming node))
+        tokens    (mapcat a/->offeredTokens offers)
+        ctrl-toks (filter a/isa-ControlToken? tokens)
+        fork-toks (filter a/isa-ForkedToken? tokens)]
+    (doseq+ [ct ctrl-toks]
+      (a/->set-holder! ct nil))
     (doseq+ [ft fork-toks]
-      (a/->set-holder! (a/->baseToken ft) nil)
+      (when-let [bt (a/->baseToken ft)]
+        (a/->set-holder! bt nil))
       (a/set-remainingOffersCount! ft (dec (a/remainingOffersCount ft)))
       (when (zero? (a/remainingOffersCount ft))
-        (edelete! ft)))
-    (concat ctrl-toks (remove #(zero? (a/remainingOffersCount %)) fork-toks))))
+        (a/->set-holder! ft nil)))
+    (mapc edelete! offers)
+    tokens))
 \end{clojurecode}
 \caption{Consuming offers}
 \label{lst:consume-offers}
@@ -371,7 +371,30 @@ to compute the new value.
 \label{lst:eval-exp}
 \end{listing}
 
-These 82 NCLOC of algorithmic FunnyQT/Clojure code implement the complete
+After executing all enabled nodes, the transformation's main function
+\code|execute-activity-diagram| from listing
+\vref{lst:execute-activity-diagram} recomputes the enabled nodes and resumes
+the execution.  The enabled nodes are computed by the \code|enabled-nodes|
+function shown in listing \vref{lst:enabled-nodes}.  The enabled nodes are
+those nodes of a given activity which are set running, are no initial nodes,
+and receive an offer on each incoming control flow, or, in the case of a merge
+node, on one incoming control flow.
+
+\begin{listing}[h!tb]
+\begin{clojurecode}
+(defn enabled-nodes [activity]
+  (filter (fn [n]
+            (and (a/running? n)
+                 (not (a/isa-InitialNode? n))
+                 ((if (a/isa-MergeNode? n) exists? forall?)
+                  #(seq (a/->offers %)) (a/->incoming n))))
+          (a/->nodes activity)))
+\end{clojurecode}
+\caption{Computation of enabled nodes}
+\label{lst:enabled-nodes}
+\end{listing}
+
+These 92 NCLOC of algorithmic FunnyQT/Clojure code implement the complete
 operational semantics of UML Activity Diagrams (with the exception of data
 flows which has not been demanded by the case description).
 
@@ -383,7 +406,16 @@ stated in the case description.
 
 \paragraph{Correctness.}
 
-The unit test suite 
+The JUnit test suite of the reference Java solution has been translated to
+Clojure and its unit testing library.  The very same assertions are tested,
+i.e., the execution order of nodes is tested and the final values of variables
+are checked.  Additionally, it is checked that after an activity has been
+executed, there are no tokens leftover whose existence would hint at some bug
+in the implementation.
+
+All tests pass for all provided test models, so the solution is correct at
+least with respect to these models and the set of assertions tested by the unit
+test.
 
 
 \section{Conclusion}

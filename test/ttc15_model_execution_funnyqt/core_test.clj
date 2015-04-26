@@ -39,10 +39,6 @@
 
 (defn no-offers-and-tokens-left-over [ad]
   (is (empty? (a/eall-Offers ad)))
-  (doseq [t (a/eall-activitydiagram$Tokens ad)]
-    (let [h (a/->holder t)
-          ns (map a/->target (a/->outgoing h))]
-      (println t "holder:" h "nexts:" ns)))
   (is (empty? (a/eall-activitydiagram$Tokens ad))))
 
 (defmacro make-test [name file & assertions]
