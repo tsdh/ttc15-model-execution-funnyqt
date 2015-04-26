@@ -282,6 +282,15 @@ variable's current value is true\footnote{\code|(the predicate collection)|
 
 So how does a node consume offers?  This is defined by the
 \code|consume-offers| function shown in listing \vref{lst:consume-offers}.
+First, the offers and the tokens offered by them are calculated.  Then, the
+offered tokens are divided into control and forked tokens.  The offers are
+deleted, and the holder of the control tokens is set to the consuming node.
+For forked tokens, the corresponding base token's holder is unset.  The forked
+tokens' \textsf{remainingOffersCount} is decremented.  If it has become zero
+then, the forked token is deleted.  The return value is the sequence of control
+tokens concatenated with the sequence of forked tokens whose remaining offers
+count is still larger than zero.  Those are the tokens that \code|pass-tokens|
+from listing \vref{lst:exec-node-join-merge-decision-node} passes on.
 
 \begin{listing}[h!tb]
 \begin{clojurecode}
@@ -302,11 +311,79 @@ So how does a node consume offers?  This is defined by the
 \label{lst:consume-offers}
 \end{listing}
 
+The remaining kinds of activity nodes are activity final nodes and opaque
+actions.  Their \code|exec-node| implementations are printed in listing
+\vref{lst:exec-node-final-opaque}.  An activity final node simply consumes all
+offers and then sets the \textsf{running} attribute of all nodes contained by
+the executed activity to false.  An opaque action also consumes all offers,
+then evaluates all its expressions in sequence using the \code|eval-exp|
+function, and finally offers one single control token on the outgoing control
+flow.
 
+\begin{listing}[h!tb]
+\begin{clojurecode}
+(defpolyfn exec-node ActivityFinalNode [afn]
+  (consume-offers afn)
+  (mapc #(a/set-running! % false)
+        (-> afn a/->activity a/->nodes)))
+
+(defpolyfn exec-node OpaqueAction [oa]
+  (consume-offers oa)
+  (mapc eval-exp (a/->expressions oa))
+  (offer-one-ctrl-token oa))
+\end{clojurecode}
+\caption{\code|exec-node| impls for activity final nodes and opaque actions}
+\label{lst:exec-node-final-opaque}
+\end{listing}
+
+How an expression is evaluated depends on (1) the type of the expression, and
+(2) on the value of the \textsf{operator} attribute.  The expression's type is
+only important in order to separate unary from binary expressions, and the
+operator defines the semantics.  Therefore, the \code|eval-exp| function shown
+in listing \vref{lst:eval-exp} has a special case for boolean unary expressions
+which negates the expression's current value using \code|not|.  For all binary
+expressions, the map \code|op2fn| mapping from operator enum constants to
+Clojure functions having the semantics of that operator is used.  The function
+determined by looking up the expression's operator is applied to both operands
+to compute the new value.
+
+\begin{listing}[h!tb]
+\begin{clojurecode}
+(def op2fn {(a/eenum-IntegerCalculationOperator-ADD)           +
+            (a/eenum-IntegerCalculationOperator-SUBRACT)       -
+            (a/eenum-IntegerComparisonOperator-SMALLER)        <
+            (a/eenum-IntegerComparisonOperator-SMALLER_EQUALS) <=
+            (a/eenum-IntegerComparisonOperator-EQUALS)         =
+            (a/eenum-IntegerComparisonOperator-GREATER_EQUALS) >=
+            (a/eenum-IntegerComparisonOperator-GREATER)        >
+            (a/eenum-BooleanBinaryOperator-AND)                #(and %1 %2)
+            (a/eenum-BooleanBinaryOperator-OR)                 #(or  %1 %2)})
+
+(defn eval-exp [exp]
+  (a/set-value! (-> exp a/->assignee a/->currentValue)
+                (if (a/isa-BooleanUnaryExpression? exp)
+                  (not (-> exp a/->operand a/->currentValue a/value))
+                  ((op2fn (a/operator exp))
+                   (-> exp a/->operand1 a/->currentValue a/value)
+                   (-> exp a/->operand2 a/->currentValue a/value)))))
+\end{clojurecode}
+\caption{Evaluation of expressions}
+\label{lst:eval-exp}
+\end{listing}
+
+These 82 NCLOC of algorithmic FunnyQT/Clojure code implement the complete
+operational semantics of UML Activity Diagrams (with the exception of data
+flows which has not been demanded by the case description).
 
 \section{Evaluation}
 \label{sec:evaluation}
 
+In this section, the FunnyQT solution is evaluated according to the criteria
+stated in the case description.
+
+\paragraph{Correctness.}
+
+The unit test suite 
 
 
 \section{Conclusion}

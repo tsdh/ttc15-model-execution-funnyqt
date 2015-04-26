@@ -37,6 +37,14 @@
 (defn variable-value [ad var-name]
   (a/value (a/->currentValue (the #(= var-name (a/name %)) (a/eall-Variables ad)))))
 
+(defn no-offers-and-tokens-left-over [ad]
+  (is (empty? (a/eall-Offers ad)))
+  (doseq [t (a/eall-activitydiagram$Tokens ad)]
+    (let [h (a/->holder t)
+          ns (map a/->target (a/->outgoing h))]
+      (println t "holder:" h "nexts:" ns)))
+  (is (empty? (a/eall-activitydiagram$Tokens ad))))
+
 (defmacro make-test [name file & assertions]
   (let [get-name (fn get-name [file]
                    (if (coll? file)
@@ -52,6 +60,7 @@
              ~'trace (u/timing "  Executing activity diagram:\n    file(s)   => %s\n    exec time => %T"
                                (execute-activity-diagram ~'ad)
                                ~(get-name file))]
+         (no-offers-and-tokens-left-over ~'ad)
          ~@assertions))))
 
 (make-test test1 "test/model/test1.xmi"
@@ -96,7 +105,7 @@
             trace "forkGetWelcomePackage" "addToWebsite" "joinManagerInterview")
            (check-unexecuted trace "assignToProjectExternal"))
 
-(make-test test6-true ["test/model/test6.xmi" "test/model/test6_false_input.xmi"]
+(make-test test6-false ["test/model/test6.xmi" "test/model/test6_false_input.xmi"]
            (check-total-execution-order
             trace "initialNode6" "register" "decisionInternal" "assignToProjectExternal"
             "mergeAuthorizePayment", "authorizePayment", "finalNode6")

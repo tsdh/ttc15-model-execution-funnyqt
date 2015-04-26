@@ -40,36 +40,35 @@
   (offer-one-ctrl-token i))
 
 (defn consume-offers [node]
-  (let [offers (mapcat a/->offers (a/->incoming node))
-        tokens (mapcat a/->offeredTokens offers)
-        [ctrl-toks fork-toks] ((juxt filter remove) a/isa-ControlToken? tokens)]
+  (let [offers    (mapcat a/->offers (a/->incoming node))
+        tokens    (vec (mapcat a/->offeredTokens offers))
+        ctrl-toks (filter a/isa-ControlToken? tokens)
+        fork-toks (filter a/isa-ForkedToken? tokens)]
     (mapc edelete! offers)
-    (doseq+ [c ctrl-toks] (a/->set-holder! c nil))
+    (a/->set-heldTokens! node ctrl-toks)
     (doseq+ [ft fork-toks]
-      (a/->set-holder! (a/->baseToken ft) nil)
+      (when-let [bt (a/->baseToken ft)]
+        (edelete! bt))
       (a/set-remainingOffersCount! ft (dec (a/remainingOffersCount ft)))
       (when (zero? (a/remainingOffersCount ft))
         (edelete! ft)))
-    (concat ctrl-toks (remove #(zero? (a/remainingOffersCount %)) fork-toks))))
+    ctrl-toks))
 
-(def bin-exp2op {(eclassifier 'IntegerCalculationExpression)
-                 {(a/eenum-IntegerCalculationOperator-ADD)           +
-                  (a/eenum-IntegerCalculationOperator-SUBRACT)       -}
-                 (eclassifier 'IntegerComparisonExpression)
-                 {(a/eenum-IntegerComparisonOperator-SMALLER)        <
-                  (a/eenum-IntegerComparisonOperator-SMALLER_EQUALS) <=
-                  (a/eenum-IntegerComparisonOperator-EQUALS)         =
-                  (a/eenum-IntegerComparisonOperator-GREATER_EQUALS) >=
-                  (a/eenum-IntegerComparisonOperator-GREATER)        >}
-                 (eclassifier 'BooleanBinaryExpression)
-                 {(a/eenum-BooleanBinaryOperator-AND)                #(and %1 %2)
-                  (a/eenum-BooleanBinaryOperator-OR)                 #(or  %1 %2)}})
+(def op2fn {(a/eenum-IntegerCalculationOperator-ADD)           +
+            (a/eenum-IntegerCalculationOperator-SUBRACT)       -
+            (a/eenum-IntegerComparisonOperator-SMALLER)        <
+            (a/eenum-IntegerComparisonOperator-SMALLER_EQUALS) <=
+            (a/eenum-IntegerComparisonOperator-EQUALS)         =
+            (a/eenum-IntegerComparisonOperator-GREATER_EQUALS) >=
+            (a/eenum-IntegerComparisonOperator-GREATER)        >
+            (a/eenum-BooleanBinaryOperator-AND)                #(and %1 %2)
+            (a/eenum-BooleanBinaryOperator-OR)                 #(or  %1 %2)})
 
 (defn eval-exp [exp]
   (a/set-value! (-> exp a/->assignee a/->currentValue)
                 (if (a/isa-BooleanUnaryExpression? exp)
                   (not (-> exp a/->operand a/->currentValue a/value))
-                  (((-> exp eclass bin-exp2op) (a/operator exp))
+                  ((op2fn (a/operator exp))
                    (-> exp a/->operand1 a/->currentValue a/value)
                    (-> exp a/->operand2 a/->currentValue a/value)))))
 
@@ -77,19 +76,18 @@
   ([n] (pass-tokens n nil))
   ([n out-cf]
    (let [in-toks (consume-offers n)]
-     (a/->set-heldTokens! n in-toks)
      (doseq+ [out-cf (if out-cf [out-cf] (a/->outgoing n))]
        (a/->add-offers!
         out-cf (a/create-Offer!
                 nil {:offeredTokens in-toks}))))))
 
 (defpolyfn exec-node OpaqueAction [oa]
-  (consume-offers oa)
+  (mapc edelete! (consume-offers oa))
   (mapc eval-exp (a/->expressions oa))
   (offer-one-ctrl-token oa))
 
 (defpolyfn exec-node ActivityFinalNode [afn]
-  (consume-offers afn)
+  (mapc edelete! (consume-offers afn))
   (mapc #(a/set-running! % false)
         (-> afn a/->activity a/->nodes)))
 
