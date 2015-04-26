@@ -41,18 +41,19 @@
 
 (defn consume-offers [node]
   (let [offers    (mapcat a/->offers (a/->incoming node))
-        tokens    (vec (mapcat a/->offeredTokens offers))
+        tokens    (mapcat a/->offeredTokens offers)
         ctrl-toks (filter a/isa-ControlToken? tokens)
         fork-toks (filter a/isa-ForkedToken? tokens)]
-    (mapc edelete! offers)
-    (a/->set-heldTokens! node ctrl-toks)
+    (doseq+ [ct ctrl-toks]
+      (a/->set-holder! ct nil))
     (doseq+ [ft fork-toks]
       (when-let [bt (a/->baseToken ft)]
-        (edelete! bt))
+        (a/->set-holder! bt nil))
       (a/set-remainingOffersCount! ft (dec (a/remainingOffersCount ft)))
       (when (zero? (a/remainingOffersCount ft))
-        (edelete! ft)))
-    ctrl-toks))
+        (a/->set-holder! ft nil)))
+    (mapc edelete! offers)
+    tokens))
 
 (def op2fn {(a/eenum-IntegerCalculationOperator-ADD)           +
             (a/eenum-IntegerCalculationOperator-SUBRACT)       -
@@ -76,18 +77,19 @@
   ([n] (pass-tokens n nil))
   ([n out-cf]
    (let [in-toks (consume-offers n)]
+     (a/->set-heldTokens! n in-toks)
      (doseq+ [out-cf (if out-cf [out-cf] (a/->outgoing n))]
        (a/->add-offers!
         out-cf (a/create-Offer!
                 nil {:offeredTokens in-toks}))))))
 
 (defpolyfn exec-node OpaqueAction [oa]
-  (mapc edelete! (consume-offers oa))
+  (consume-offers oa)
   (mapc eval-exp (a/->expressions oa))
   (offer-one-ctrl-token oa))
 
 (defpolyfn exec-node ActivityFinalNode [afn]
-  (mapc edelete! (consume-offers afn))
+  (consume-offers afn)
   (mapc #(a/set-running! % false)
         (-> afn a/->activity a/->nodes)))
 
@@ -98,6 +100,7 @@
                          nil {:baseToken %, :holder fn,
                               :remainingOffersCount (count out-cfs)})
                        in-toks)]
+    (a/->set-heldTokens! fn in-toks)
     (doseq+ [out-cf out-cfs]
       (a/->add-offers! out-cf (a/create-Offer!
                                nil {:offeredTokens out-toks})))))
