@@ -47,17 +47,19 @@
                      (str/join ", " (map get-name file))
                      (.getName (io/file file))))]
     `(deftest ~name
-       (println "Running test" ~(clojure.core/name name))
-       (let [~'ad ~(if (coll? file)
-                     `(doto (new-resource-set)
-                        ~@(for [f file]
-                            `(get-resource ~f true)))
-                     `(load-resource ~file))
-             ~'trace (u/timing "  Executing activity diagram:\n    file(s)   => %s\n    exec time => %T"
-                               (execute-activity-diagram ~'ad)
-                               ~(get-name file))]
-         (no-offers-and-tokens-left-over ~'ad)
-         ~@assertions))))
+       (println "Model" ~(clojure.core/name name))
+       (dotimes [i# 2]
+         (println "  Run" (inc i#))
+         (let [~'ad ~(if (coll? file)
+                       `(doto (new-resource-set)
+                          ~@(for [f file]
+                              `(get-resource ~f true)))
+                       `(load-resource ~file))
+               ~'trace (u/timing "    Executing activity diagram:\n      file(s)   => %s\n      exec time => %T"
+                                 (execute-activity-diagram ~'ad)
+                                 ~(get-name file))]
+           (no-offers-and-tokens-left-over ~'ad)
+           ~@assertions)))))
 
 (make-test test1 "test/model/test1.xmi"
            (check-total-execution-order trace "initialNode1" "action1" "finalNode1"))

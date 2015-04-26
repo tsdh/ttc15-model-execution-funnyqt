@@ -376,8 +376,10 @@ After executing all enabled nodes, the transformation's main function
 \vref{lst:execute-activity-diagram} recomputes the enabled nodes and resumes
 the execution.  The enabled nodes are computed by the \code|enabled-nodes|
 function shown in listing \vref{lst:enabled-nodes}.  The enabled nodes are
-those nodes of a given activity which are set running, are no initial nodes,
-and receive an offer on each incoming control flow, or, in the case of a merge
+those nodes of a given activity which are set running, are no initial
+nodes\footnote{Initial nodes have to be excluded because if they are set
+  running, all of their (zero) incoming control flows have offers.}, and
+receive an offer on each incoming control flow, or, in the case of a merge
 node, on one incoming control flow.
 
 \begin{listing}[h!tb]
@@ -418,10 +420,83 @@ least with respect to these models and the set of assertions tested by the unit
 test.
 
 
+\paragraph{Understandability and conciseness.}
+
+With 92 lines of non-commented source code, the FunnyQT solution is quite
+concise.
+
+Of course, understandability is a very subjective measure measure.  The
+solution should be evident for any Clojure programmer but even without prior
+Clojure knowledge, the solution shouldn't be hard to follow due to the usage of
+the metamodel-specific API.  Another strong point is that all steps in the
+execution of an activity are encoded in one function each whose definition is
+almost a literal translation of the English description to FunnyQT/Clojure
+code.
+
+
+\paragraph{Performance.}
+
+Table \vref{tab:runtimes} shows the execution times of the FunnyQT solution for
+all provided test models.  These times were measured on a normal 4-core laptop
+with 2.6 GHz and 2 GB of RAM dedicated to the JVM.
+
+\begin{table}[h!tb]
+  \centering
+  \begin{tabular}{|l | r |}
+    \hline
+    \textbf{Model} & \textbf{Execution time}\\
+    \hline
+    \emph{test1} & 1.4 ms\\
+    \emph{test2} & 0.8 ms\\
+    \emph{test3} & 3.1 ms\\
+    \emph{test4} & 4.3 ms\\
+    \emph{test5} & 0.7 ms\\
+    \emph{test6 (false)} & 6.5 ms\\
+    \emph{test6 (true)}  & 10.8 ms\\
+    \emph{test-performance-variant-1} & 2093.3 ms\\
+    \emph{test-performance-variant-2} & 248.5 ms\\
+    \emph{test-performance-variant-3-1} & 118.2 ms\\
+    \emph{test-performance-variant-3-2} & 172.8 ms\\
+    \hline
+  \end{tabular}
+  \caption{Execution times for the provided test models}
+  \label{tab:runtimes}
+\end{table}
+
+When compared with the reference Java solution, there are no notable
+differences for the smaller models.  For the model
+\emph{test-performance-variant-1}, the Java solution is slightly faster.
+However, for the model \emph{test-performance-variant-2} the Java solution
+takes about 1600 ms, and for the \emph{test-performance-variant-3-1} it takes
+about 8000 ms.  So for these models, the FunnyQT solution is an order of
+magnitudes faster than the Java solution which hints at some inefficiencies in
+how parallel branches are executed in the latter.
+
+
 \section{Conclusion}
 \label{sec:conclusion}
 
+In this paper, the FunnyQT solution to the TTC 2015 Model Execution case has
+been discussed.  The solution implements the full operational semantics of UML
+Activity Diagrams with the exception of object flows which haven't been
+considered in this case.
 
+The specification is very concise.  The complete implementation amounts to only
+92 lines of code without counting comments and empty lines.
+
+The specification is also well-understandable.  The description of the
+semantics given in the case description have been translated almost literally
+to functions and one polymorphic function.  These functions use a
+metamodel-specific API which FunnyQT has generated from the activity diagram
+metamodel.
+
+The FunnyQT solution also performs very well.  In general, its execution times
+are very similar to those of the Java reference solution, and for two of the
+performance test models, the FunnyQT solution is in fact several times faster.
+
+Overall, FunnyQT seems to be very adequate for defining model interpreters.
+Especially its polymorphic function facility has been explicitly designed for
+these kinds of tasks.
 
 \bibliographystyle{eptcs}
 \bibliography{ttc-model-execution}
