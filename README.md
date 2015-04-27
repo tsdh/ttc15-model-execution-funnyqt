@@ -7,7 +7,7 @@ This project contains the [FunnyQT](http://funnyqt.org) solution to the
 ## Usage
 
 To run the solution's test suite which executes the activities of all provided
-test models, you need to get the /lein/ script from the
+test models, you need to get the `lein` script from the
 [Leiningen homepage](http://leiningen.org/) and put in on your `PATH`.  Then
 just run `lein test`.
 
