@@ -9,7 +9,7 @@
 \usepackage{paralist}
 \usepackage{graphicx}
 \usepackage[cache]{minted}
-\newminted{clojure}{fontsize=\fontsize{8}{8},linenos,numbersep=3pt,numberblanklines=false,firstnumber=last}
+\newminted{clojure}{fontsize=\fontsize{9}{9},linenos,numbersep=3pt,numberblanklines=false,firstnumber=last}
 \newmintinline{clojure}{fontsize=\small}
 \newcommand{\code}{\clojureinline}
 
@@ -119,7 +119,7 @@ one.
 The generated API consists of element creation functions, lazy element sequence
 functions, attribute access functions, and reference access functions.  For
 example, \code|(a/create-ControlToken! ad)| creates a new control token and
-adds it to the activity diagram model \code|ad|, \code|(a/eall-Inputs ad)|
+adds it to the activity diagram model \code|ad|, \code|(a/all-Inputs ad)|
 returns the lazy sequence of input elements in \code|ad|, \code|(a/running? n)|
 and \code|(a/set-running! n true)| query and set the node \code|n|'s
 \textsf{running} attribute, and \code|(a/->locals a)|, \code|(a/->set-locals! a
@@ -147,10 +147,10 @@ Listing~\vref{lst:execute-activity-diagram} shows the function
 \begin{listing}[h!tb]
 \begin{clojurecode}
 (defn execute-activity-diagram [ad]
-  (let [activity (the (a/eall-Activities ad))
+  (let [activity (the (a/all-Activities ad))
         trace (a/create-Trace! nil)]
     (a/->set-trace! activity trace)
-    (init-variables activity (first (a/eall-Inputs ad)))
+    (init-variables activity (first (a/all-Inputs ad)))
     (mapc #(a/set-running! % true) (a/->nodes activity))
     (loop [ens (filter a/isa-InitialNode? (a/->nodes activity))]
       (when (seq ens)
@@ -311,17 +311,28 @@ holder.  Lastly, the offers are deleted, and the incoming tokens are returned.
 \label{lst:consume-offers}
 \end{listing}
 
-The remaining kinds of activity nodes are activity final nodes and opaque
-actions.  Their \code|exec-node| implementations are printed in listing
-\vref{lst:exec-node-final-opaque}.  An activity final node simply consumes all
-offers and then sets the \textsf{running} attribute of all nodes contained by
-the executed activity to false.  An opaque action also consumes all offers,
-then evaluates all its expressions in sequence using the \code|eval-exp|
-function, and finally offers one single control token on the outgoing control
-flow.
+The remaining kinds of activity nodes are fork nodes, activity final nodes and
+opaque actions.  Their \code|exec-node| implementations are printed in listing
+\vref{lst:exec-node-final-opaque}.
+
+A fork node consumes its offers and creates one forked token per incoming
+token.  The incoming tokens are set as the forked tokens' base tokens, and the
+remaining offers count is set to the number of outgoing control flows.  All
+created forked tokens are offered on each outgoing control flow.
 
 \begin{listing}[h!tb]
 \begin{clojurecode}
+(defpolyfn exec-node ForkNode [fn]
+  (let [in-toks  (consume-offers fn)
+        out-cfs  (a/->outgoing fn)
+        out-toks (mapv #(a/create-ForkedToken!
+                         nil {:baseToken %, :holder fn,
+                              :remainingOffersCount (count out-cfs)})
+                       in-toks)]
+    (a/->set-heldTokens! fn in-toks)
+    (doseq+ [out-cf out-cfs]
+      (a/->add-offers! out-cf (a/create-Offer!
+                               nil {:offeredTokens out-toks})))))
 (defpolyfn exec-node ActivityFinalNode [afn]
   (consume-offers afn)
   (mapc #(a/set-running! % false)
@@ -336,6 +347,12 @@ flow.
 \label{lst:exec-node-final-opaque}
 \end{listing}
 
+An activity final node simply consumes all offers and then sets the
+\textsf{running} attribute of all nodes contained by the executed activity to
+false.  An opaque action also consumes all offers, then evaluates all its
+expressions in sequence using the \code|eval-exp| function, and finally offers
+one single control token on the outgoing control flow.
+
 How an expression is evaluated depends on (1) the type of the expression, and
 (2) on the value of the \textsf{operator} attribute.  The expression's type is
 only important in order to separate unary from binary expressions, and the
@@ -349,15 +366,15 @@ to compute the new value.
 
 \begin{listing}[h!tb]
 \begin{clojurecode}
-(def op2fn {(a/eenum-IntegerCalculationOperator-ADD)           +
-            (a/eenum-IntegerCalculationOperator-SUBRACT)       -
-            (a/eenum-IntegerComparisonOperator-SMALLER)        <
-            (a/eenum-IntegerComparisonOperator-SMALLER_EQUALS) <=
-            (a/eenum-IntegerComparisonOperator-EQUALS)         =
-            (a/eenum-IntegerComparisonOperator-GREATER_EQUALS) >=
-            (a/eenum-IntegerComparisonOperator-GREATER)        >
-            (a/eenum-BooleanBinaryOperator-AND)                #(and %1 %2)
-            (a/eenum-BooleanBinaryOperator-OR)                 #(or  %1 %2)})
+(def op2fn {(a/enum-IntegerCalculationOperator-ADD)           +
+            (a/enum-IntegerCalculationOperator-SUBRACT)       -
+            (a/enum-IntegerComparisonOperator-SMALLER)        <
+            (a/enum-IntegerComparisonOperator-SMALLER_EQUALS) <=
+            (a/enum-IntegerComparisonOperator-EQUALS)         =
+            (a/enum-IntegerComparisonOperator-GREATER_EQUALS) >=
+            (a/enum-IntegerComparisonOperator-GREATER)        >
+            (a/enum-BooleanBinaryOperator-AND)                #(and %1 %2)
+            (a/enum-BooleanBinaryOperator-OR)                 #(or  %1 %2)})
 
 (defn eval-exp [exp]
   (a/set-value! (-> exp a/->assignee a/->currentValue)
@@ -422,7 +439,7 @@ test.
 
 \paragraph{Understandability and conciseness.}
 
-With 92 lines of non-commented source code, the FunnyQT solution is quite
+With 103 lines of non-commented source code, the FunnyQT solution is quite
 concise.
 
 Of course, understandability is a very subjective measure measure.  The
@@ -482,7 +499,9 @@ Activity Diagrams with the exception of object flows which haven't been
 considered in this case.
 
 The specification is very concise.  The complete implementation amounts to only
-92 lines of code without counting comments and empty lines.
+103 lines of code without counting comments, empty lines, and the solution
+namespace's namespace declaration (similar to Java's \code|package| and
+\code|import| statements).
 
 The specification is also well-understandable.  The description of the
 semantics given in the case description have been translated almost literally

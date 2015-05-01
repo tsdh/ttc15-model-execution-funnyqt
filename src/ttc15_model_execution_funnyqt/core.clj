@@ -4,12 +4,8 @@
             [funnyqt.polyfns :refer :all]
             [funnyqt.utils :refer [doseq+ mapc]]))
 
-;;* Load metamodel and generate accessors
-
 (load-ecore-resource "activitydiagram.ecore")
 (generate-ecore-model-functions "activitydiagram.ecore" ttc15-model-execution-funnyqt.ad a)
-
-;;* Solution
 
 (defn init-variables [activity input]
   (doseq+ [lv (a/->locals activity)]
@@ -55,15 +51,15 @@
     (mapc edelete! offers)
     tokens))
 
-(def op2fn {(a/eenum-IntegerCalculationOperator-ADD)           +
-            (a/eenum-IntegerCalculationOperator-SUBRACT)       -
-            (a/eenum-IntegerComparisonOperator-SMALLER)        <
-            (a/eenum-IntegerComparisonOperator-SMALLER_EQUALS) <=
-            (a/eenum-IntegerComparisonOperator-EQUALS)         =
-            (a/eenum-IntegerComparisonOperator-GREATER_EQUALS) >=
-            (a/eenum-IntegerComparisonOperator-GREATER)        >
-            (a/eenum-BooleanBinaryOperator-AND)                #(and %1 %2)
-            (a/eenum-BooleanBinaryOperator-OR)                 #(or  %1 %2)})
+(def op2fn {(a/enum-IntegerCalculationOperator-ADD)           +
+            (a/enum-IntegerCalculationOperator-SUBRACT)       -
+            (a/enum-IntegerComparisonOperator-SMALLER)        <
+            (a/enum-IntegerComparisonOperator-SMALLER_EQUALS) <=
+            (a/enum-IntegerComparisonOperator-EQUALS)         =
+            (a/enum-IntegerComparisonOperator-GREATER_EQUALS) >=
+            (a/enum-IntegerComparisonOperator-GREATER)        >
+            (a/enum-BooleanBinaryOperator-AND)                #(and %1 %2)
+            (a/enum-BooleanBinaryOperator-OR)                 #(or  %1 %2)})
 
 (defn eval-exp [exp]
   (a/set-value! (-> exp a/->assignee a/->currentValue)
@@ -116,10 +112,10 @@
                        (a/->outgoing dn))))
 
 (defn execute-activity-diagram [ad]
-  (let [activity (the (a/eall-Activities ad))
+  (let [activity (the (a/all-Activities ad))
         trace (a/create-Trace! nil)]
     (a/->set-trace! activity trace)
-    (init-variables activity (first (a/eall-Inputs ad)))
+    (init-variables activity (first (a/all-Inputs ad)))
     (mapc #(a/set-running! % true) (a/->nodes activity))
     (loop [ens (filter a/isa-InitialNode? (a/->nodes activity))]
       (when (seq ens)

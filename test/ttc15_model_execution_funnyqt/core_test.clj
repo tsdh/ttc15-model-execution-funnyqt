@@ -35,11 +35,11 @@
     (is (empty? too-many))))
 
 (defn variable-value [ad var-name]
-  (a/value (a/->currentValue (the #(= var-name (a/name %)) (a/eall-Variables ad)))))
+  (a/value (a/->currentValue (the #(= var-name (a/name %)) (a/all-Variables ad)))))
 
 (defn no-offers-and-tokens-left-over [ad]
-  (is (empty? (a/eall-Offers ad)))
-  (is (empty? (a/eall-activitydiagram$Tokens ad))))
+  (is (empty? (a/all-Offers ad)))
+  (is (empty? (a/all-activitydiagram$Tokens ad))))
 
 (defmacro make-test [name file & assertions]
   (let [get-name (fn get-name [file]
@@ -122,7 +122,7 @@
 (make-test test-performance-variant-3-1 "test/model/testperformance_variant3_1.xmi"
            (is (= 1004 (count (a/->executedNodes trace))))
            (doseq [lv (remove #(= "one" (a/name %))
-                              (a/->locals (first (a/eall-Activities ad))))]
+                              (a/->locals (first (a/all-Activities ad))))]
              (is (= 10 (-> lv a/->currentValue a/value)))))
 
 (make-test test-performance-variant-3-2
