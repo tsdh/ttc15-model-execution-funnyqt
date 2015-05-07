@@ -120,12 +120,14 @@ one.
 The generated API consists of element creation functions, lazy element sequence
 functions, attribute access functions, and reference access functions.  For
 example, \code|(a/create-ControlToken! ad)| creates a new control token and
-adds it to the activity diagram model \code|ad|, \code|(a/all-Inputs ad)|
+adds it to the activity diagram model \code|ad|, \code|(a/isa-Token? x)|
+returns true if and only if \code|x| is a token, \code|(a/all-Inputs ad)|
 returns the lazy sequence of input elements in \code|ad|, \code|(a/running? n)|
 and \code|(a/set-running! n true)| query and set the node \code|n|'s
 \textsf{running} attribute, and \code|(a/->locals a)|, \code|(a/->set-locals! a
-ls)|, and \code|(a/->add-locals! a l)| query, set, and add to the
-\textsf{locals} reference of the activity \code|a|.
+ls)|, \code|(a/->add-locals! a l)|, and \code|(a/->remove-locals! a l)| query,
+set, add to, and remove from the \textsf{locals} reference of the activity
+\code|a|.
 
 Metamodel-specific APIs created by the \code|generate-ecore-model-functions|
 macro are independent of the underlying implementation kind.  The FunnyQT
@@ -354,11 +356,11 @@ false.  An opaque action also consumes all offers, then evaluates all its
 expressions in sequence using the \code|eval-exp| function, and finally offers
 one single control token on the outgoing control flow.
 
-How an expression is evaluated depends on (1) the type of the expression, and
-(2) on the value of the \textsf{operator} attribute.  The expression's type is
-only important in order to separate unary from binary expressions, and the
-operator defines the semantics.  Therefore, the \code|eval-exp| function shown
-in listing \vref{lst:eval-exp} has a special case for boolean unary expressions
+How an expression is evaluated depends on (1) the type of the and (2) on the
+value of its \textsf{operator} attribute.  The expression's type is only
+important in order to separate unary from binary expressions, and the operator
+defines the semantics.  Therefore, the \code|eval-exp| function shown in
+listing \vref{lst:eval-exp} has a special case for boolean unary expressions
 which negates the expression's current value using \code|not|.  For all binary
 expressions, the map \code|op2fn| mapping from operator enum constants to
 Clojure functions having the semantics of that operator is used.  The function
@@ -414,7 +416,7 @@ node, on one incoming control flow.
 \label{lst:enabled-nodes}
 \end{listing}
 
-These 92 NCLOC of algorithmic FunnyQT/Clojure code implement the complete
+These 103 NCLOC of algorithmic FunnyQT/Clojure code implement the complete
 operational semantics of UML Activity Diagrams (with the exception of data
 flows which has not been demanded by the case description).
 
