@@ -2,16 +2,16 @@
   (:require [funnyqt.emf :refer :all]
             [funnyqt.query :refer [forall? exists? the]]
             [funnyqt.polyfns :refer :all]
-            [funnyqt.utils :refer [doseq+ mapc]]))
+            [funnyqt.utils :refer [mapc]]))
 
 (load-ecore-resource "activitydiagram.ecore")
 (generate-ecore-model-functions "activitydiagram.ecore" ttc15-model-execution-funnyqt.ad a)
 
 (defn init-variables [activity input]
-  (doseq+ [lv (a/->locals activity)]
+  (doseq [lv (a/->locals activity)]
     (when-let [init-value (a/->initialValue lv)]
       (a/->set-currentValue! lv init-value)))
-  (doseq+ [iv (and input (a/->inputValues input))]
+  (doseq [iv (and input (a/->inputValues input))]
     (when-let [val (a/->value iv)]
       (a/->set-currentValue! (a/->variable iv) val))))
 
@@ -40,9 +40,9 @@
         tokens    (mapcat a/->offeredTokens offers)
         ctrl-toks (filter a/isa-ControlToken? tokens)
         fork-toks (filter a/isa-ForkedToken? tokens)]
-    (doseq+ [ct ctrl-toks]
+    (doseq [ct ctrl-toks]
       (a/->set-holder! ct nil))
-    (doseq+ [ft fork-toks]
+    (doseq [ft fork-toks]
       (when-let [bt (a/->baseToken ft)]
         (a/->set-holder! bt nil))
       (a/set-remainingOffersCount! ft (dec (a/remainingOffersCount ft)))
@@ -74,7 +74,7 @@
   ([n out-cf]
    (let [in-toks (consume-offers n)]
      (a/->set-heldTokens! n in-toks)
-     (doseq+ [out-cf (if out-cf [out-cf] (a/->outgoing n))]
+     (doseq [out-cf (if out-cf [out-cf] (a/->outgoing n))]
        (a/->add-offers!
         out-cf (a/create-Offer!
                 nil {:offeredTokens in-toks}))))))
@@ -97,7 +97,7 @@
                               :remainingOffersCount (count out-cfs)})
                        in-toks)]
     (a/->set-heldTokens! fn in-toks)
-    (doseq+ [out-cf out-cfs]
+    (doseq [out-cf out-cfs]
       (a/->add-offers! out-cf (a/create-Offer!
                                nil {:offeredTokens out-toks})))))
 
@@ -119,7 +119,7 @@
     (mapc #(a/set-running! % true) (a/->nodes activity))
     (loop [ens (filter a/isa-InitialNode? (a/->nodes activity))]
       (when (seq ens)
-        (doseq+ [node ens]
+        (doseq [node ens]
           (exec-node node)
           (a/->add-executedNodes! trace node))
         (recur (enabled-nodes activity))))

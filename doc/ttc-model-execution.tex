@@ -157,7 +157,7 @@ Listing~\vref{lst:execute-activity-diagram} shows the function
     (mapc #(a/set-running! % true) (a/->nodes activity))
     (loop [ens (filter a/isa-InitialNode? (a/->nodes activity))]
       (when (seq ens)
-        (doseq+ [node ens]
+        (doseq [node ens]
           (exec-node node)
           (a/->add-executedNodes! trace node))
         (recur (enabled-nodes activity))))
@@ -194,10 +194,10 @@ element.
 \begin{listing}[h!tb]
 \begin{clojurecode}
 (defn init-variables [activity input]
-  (doseq+ [lv (a/->locals activity)]
+  (doseq [lv (a/->locals activity)]
     (when-let [init-value (a/->initialValue lv)]
       (a/->set-currentValue! lv init-value)))
-  (doseq+ [iv (and input (a/->inputValues input))]
+  (doseq [iv (and input (a/->inputValues input))]
     (when-let [val (a/->value iv)]
       (a/->set-currentValue! (a/->variable iv) val))))
 \end{clojurecode}
@@ -264,7 +264,7 @@ variable's current value is true\footnote{\code|(the predicate collection)|
   ([n out-cf]
    (let [in-toks (consume-offers n)]
      (a/->set-heldTokens! n in-toks)
-     (doseq+ [out-cf (if out-cf [out-cf] (a/->outgoing n))]
+     (doseq [out-cf (if out-cf [out-cf] (a/->outgoing n))]
        (a/->add-offers!
         out-cf (a/create-Offer!
                 nil {:offeredTokens in-toks}))))))
@@ -299,9 +299,9 @@ holder.  Lastly, the offers are deleted, and the incoming tokens are returned.
         tokens    (mapcat a/->offeredTokens offers)
         ctrl-toks (filter a/isa-ControlToken? tokens)
         fork-toks (filter a/isa-ForkedToken? tokens)]
-    (doseq+ [ct ctrl-toks]
+    (doseq [ct ctrl-toks]
       (a/->set-holder! ct nil))
-    (doseq+ [ft fork-toks]
+    (doseq [ft fork-toks]
       (when-let [bt (a/->baseToken ft)]
         (a/->set-holder! bt nil))
       (a/set-remainingOffersCount! ft (dec (a/remainingOffersCount ft)))
@@ -333,7 +333,7 @@ created forked tokens are offered on each outgoing control flow.
                               :remainingOffersCount (count out-cfs)})
                        in-toks)]
     (a/->set-heldTokens! fn in-toks)
-    (doseq+ [out-cf out-cfs]
+    (doseq [out-cf out-cfs]
       (a/->add-offers! out-cf (a/create-Offer!
                                nil {:offeredTokens out-toks})))))
 (defpolyfn exec-node ActivityFinalNode [afn]
@@ -466,17 +466,17 @@ with 2.6 GHz and 2 GB of RAM dedicated to the JVM.
     \hline
     \textbf{Model} & \textbf{Execution time}\\
     \hline
-    \emph{test1} & 1.4 ms\\
+    \emph{test1} & 1.9 ms\\
     \emph{test2} & 0.8 ms\\
-    \emph{test3} & 3.1 ms\\
-    \emph{test4} & 4.3 ms\\
-    \emph{test5} & 0.7 ms\\
-    \emph{test6 (false)} & 6.5 ms\\
+    \emph{test3} & 4.7 ms\\
+    \emph{test4} & 6.3 ms\\
+    \emph{test5} & 0.8 ms\\
+    \emph{test6 (false)} & 8.1 ms\\
     \emph{test6 (true)}  & 10.8 ms\\
-    \emph{test-performance-variant-1} & 2093.3 ms\\
-    \emph{test-performance-variant-2} & 248.5 ms\\
-    \emph{test-performance-variant-3-1} & 118.2 ms\\
-    \emph{test-performance-variant-3-2} & 172.8 ms\\
+    \emph{test-performance-variant-1} & 2167.3 ms\\
+    \emph{test-performance-variant-2} & 228.5 ms\\
+    \emph{test-performance-variant-3-1} & 129.2 ms\\
+    \emph{test-performance-variant-3-2} & 204.8 ms\\
     \hline
   \end{tabular}
   \caption{Execution times for the provided test models}
