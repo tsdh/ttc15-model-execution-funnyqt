@@ -6,4 +6,4 @@
             :distribution :repo}
   :dependencies [[funnyqt "0.48.1"]]
   :global-vars {*warn-on-reflection* true}
-  :jvm-opts ^:replace ["-Xmx2G"])
+  :jvm-opts ^:replace ["-server" "-XX:+AggressiveOpts" "-Xmx2G"])
