@@ -155,12 +155,11 @@ Listing~\vref{lst:execute-activity-diagram} shows the function
     (a/->set-trace! activity trace)
     (init-variables activity (first (a/all-Inputs ad)))
     (mapc #(a/set-running! % true) (a/->nodes activity))
-    (loop [ens (filter a/isa-InitialNode? (a/->nodes activity))]
-      (when (seq ens)
-        (doseq [node ens]
-          (exec-node node)
-          (a/->add-executedNodes! trace node))
-        (recur (enabled-nodes activity))))
+    (loop [en (first (filter a/isa-InitialNode? (a/->nodes activity)))]
+      (when en
+        (exec-node en)
+        (a/->add-executedNodes! trace en)
+        (recur (first (enabled-nodes activity)))))
     trace))
 \end{clojurecode}
 \caption{The main loop of executing activity diagrams}
@@ -177,11 +176,10 @@ Then, a \code|loop|-\code|recur| iteration\footnote{\code|loop| is not a loop
   and in the \code|loop|'s body \code|recur| forms may recurse back to the
   beginning of the \code|loop| providing new bindings for the \code|loop|'s
   variables.} performs the actual execution of the activity.  The variable
-\code|ens| is bound to the enabled nodes.  Initially, those are the activity's
-initial nodes from which there can only be one.  As long as there are enabled
-nodes left, each node gets executed one after the other and then added to the
-trace.  Thereafter, the loop is restarted with the nodes that are enabled at
-that point in time.  Eventually, there won't be any enabled nodes left, and
+\code|en| is bound to the first enabled node.  Initially, this is the
+activity's initial node.  As long as there is an enabled node left, it gets
+executed and then added to the trace.  Thereafter, the loop is restarted with
+the next enabled node.  Eventually, there won't be an enabled node left, and
 then the function returns the trace.
 
 So the first step in the execution of an activity is the initialization of its
@@ -416,7 +414,7 @@ node, on one incoming control flow.
 \label{lst:enabled-nodes}
 \end{listing}
 
-These 103 NCLOC of algorithmic FunnyQT/Clojure code implement the complete
+These 102 NCLOC of algorithmic FunnyQT/Clojure code implement the complete
 operational semantics of UML Activity Diagrams (with the exception of data
 flows which has not been demanded by the case description).
 
@@ -442,7 +440,7 @@ test.
 
 \paragraph{Understandability and conciseness.}
 
-With 103 lines of non-commented source code, the FunnyQT solution is quite
+With 102 lines of non-commented source code, the FunnyQT solution is quite
 concise.
 
 Of course, understandability is a very subjective measure measure.  The
@@ -466,31 +464,29 @@ with 2.6 GHz and 2 GB of RAM dedicated to the JVM.
     \hline
     \textbf{Model} & \textbf{Execution time}\\
     \hline
-    \emph{test1} & 1.9 ms 1.3 ms\\
-    \emph{test2} & 0.8 ms 0.6 ms\\
-    \emph{test3} & 4.7 ms 4.1 ms\\
-    \emph{test4} & 6.3 ms 3.2 ms\\
-    \emph{test5} & 0.8 ms 0.5 ms\\
-    \emph{test6 (false)} & 8.1 ms 3.7 ms\\
-    \emph{test6 (true)}  & 10.8 ms 5.4 ms\\
-    \emph{test-performance-variant-1} & 2167.3 ms 1104.0 ms\\
-    \emph{test-performance-variant-2} & 228.5 ms 1246.5 ms\\
-    \emph{test-performance-variant-3-1} & 129.2 ms 1159.6 ms\\
-    \emph{test-performance-variant-3-2} & 204.8 ms 72.7 ms\\
+    \emph{test1} & 1.3 ms\\
+    \emph{test2} & 0.6 ms\\
+    \emph{test3} & 4.1 ms\\
+    \emph{test4} & 3.2 ms\\
+    \emph{test5} & 0.5 ms\\
+    \emph{test6 (false)} & 3.7 ms\\
+    \emph{test6 (true)}  & 5.4 ms\\
+    \emph{test-performance-variant-1} & 1104.0 ms\\
+    \emph{test-performance-variant-2} & 1246.5 ms\\
+    \emph{test-performance-variant-3-1} & 1159.6 ms\\
+    \emph{test-performance-variant-3-2} & 72.7 ms\\
     \hline
   \end{tabular}
   \caption{Execution times for the provided test models}
   \label{tab:runtimes}
 \end{table}
 
-When compared with the reference Java solution, there are no notable
-differences for the smaller models.  For the model
-\emph{test-performance-variant-1}, the Java solution is slightly faster.
-However, for the model \emph{test-performance-variant-2} the Java solution
-takes about 1600 ms, and for the \emph{test-performance-variant-3-1} it takes
-about 8000 ms.  So for these models, the FunnyQT solution is an order of
-magnitudes faster than the Java solution which hints at some inefficiencies in
-how parallel branches are executed in the latter.
+When compared with the reference Java solution, the FunnyQT solution is
+slightly faster for all normal and performance test models.  However, for the
+model \emph{test-performance-variant-3-1}, the Java solution takes about 8
+seconds.  So for this model, the FunnyQT solution is about seven times faster
+than the Java solution which hints at some inefficiencies in how parallel
+branches are executed in the the Java solution.
 
 
 \section{Conclusion}
@@ -502,7 +498,7 @@ Activity Diagrams with the exception of object flows which haven't been
 considered in this case.
 
 The specification is very concise.  The complete implementation amounts to only
-103 lines of code without counting comments, empty lines, and the solution
+102 lines of code without counting comments, empty lines, and the solution
 namespace's namespace declaration (similar to Java's \code|package| and
 \code|import| statements).
 
