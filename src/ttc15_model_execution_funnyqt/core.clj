@@ -117,10 +117,9 @@
     (a/->set-trace! activity trace)
     (init-variables activity (first (a/all-Inputs ad)))
     (mapc #(a/set-running! % true) (a/->nodes activity))
-    (loop [ens (filter a/isa-InitialNode? (a/->nodes activity))]
-      (when (seq ens)
-        (doseq [node ens]
-          (exec-node node)
-          (a/->add-executedNodes! trace node))
-        (recur (enabled-nodes activity))))
+    (loop [en (first (filter a/isa-InitialNode? (a/->nodes activity)))]
+      (when en
+        (exec-node en)
+        (a/->add-executedNodes! trace en)
+        (recur (first (enabled-nodes activity)))))
     trace))
