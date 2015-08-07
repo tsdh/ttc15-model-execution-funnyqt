@@ -54,26 +54,24 @@ and it is set up for easy reproduction on a SHARE image\footnote{The SHARE
 
 FunnyQT is a model querying and transformation library for the functional Lisp
 dialect Clojure\footnote{\url{http://clojure.org}}.  Queries and
-transformations are plain Clojure programs using the features provided by the
-FunnyQT API.
+transformations are Clojure programs using the features provided by the FunnyQT
+API.
 
-As a Lisp, Clojure provides strong metaprogramming capabilities that are
-exploited by FunnyQT in order to define several \emph{embedded domain-specific
-  languages} (DSL) for different querying and transformation tasks.
+Clojure provides strong metaprogramming capabilities that are used by FunnyQT
+in order to define several \emph{embedded domain-specific languages} (DSL) for
+different querying and transformation tasks.
 
 FunnyQT is designed with extensibility in mind.  By default, it supports EMF
-models and JGraLab\footnote{\url{http://jgralab.github.io}} TGraph models.
-Support for other modeling frameworks can be added without having to touch
-FunnyQT's internals.
+models and JGraLab TGraph models.  Support for other modeling frameworks can be
+added without having to touch FunnyQT's internals.
 
 The FunnyQT API is structured into several namespaces, each namespace providing
 constructs supporting concrete querying and transformation use-cases, e.g.,
 model management, functional querying, polymorphic functions, relational
 querying, pattern matching, in-place transformations, out-place
-transformations, bidirectional transformations, and some more.
-
-For solving the model execution case, only the model management, the functional
-querying, and the polymorphic functions APIs have been used.
+transformations, bidirectional transformations, and some more.  For solving the
+model execution case, only the model management, the functional querying, and
+the polymorphic functions APIs have been used.
 
 
 \section{Solution Description}
@@ -84,15 +82,15 @@ Activity Diagrams suggest an algorithmic solution to the transformation case.
 The FunnyQT solution tries to be almost a literal translation of the case
 description to Clojure code.
 
-FunnyQT is able to generate metamodel-specific model management APIs for a
-given metamodel.  This feature has been used for solving this case.  The
-generated API consists of element creation functions, lazy element sequence
-functions, attribute access functions, and reference access functions.  For
-example, \code|(a/create-ControlToken! ad)| creates a new control token and
-adds it to the activity diagram model \code|ad|, \code|(a/isa-Token? x)|
-returns true if and only if \code|x| is a token, \code|(a/all-Inputs ad)|
-returns the lazy sequence of input elements in \code|ad|, \code|(a/running? n)|
-and \code|(a/set-running! n true)| query and set the node \code|n|'s
+FunnyQT is able to generate metamodel-specific model management APIs.  This
+feature has been used for solving this case.  The generated API consists of
+element creation functions, lazy element sequence functions, attribute access
+functions, and reference access functions.  For example,
+\code|(a/create-ControlToken! ad)| creates a new control token and adds it to
+the activity diagram model \code|ad|, \code|(a/isa-Token? x)| returns true if
+and only if \code|x| is a token, \code|(a/all-Inputs ad)| returns the lazy
+sequence of input elements in \code|ad|, \code|(a/running? n)| and
+\code|(a/set-running! n true)| query and set the node \code|n|'s
 \textsf{running} attribute, and \code|(a/->locals a)|, \code|(a/->set-locals! a
 ls)|, \code|(a/->add-locals! a l)|, and \code|(a/->remove-locals! a l)| query,
 set, add to, and remove from the \textsf{locals} reference of the activity
@@ -102,10 +100,9 @@ set, add to, and remove from the \textsf{locals} reference of the activity
 
 In the following, the solution is presented in a top-down manner similar to how
 the case description defines the operational semantics of activity diagrams.
-Listing~\vref{lst:execute-activity-diagram} shows the function
-\code|execute-activity-diagram| which contains the transformation's main loop.
+The following listing shows the function \code|execute-activity-diagram| which
+contains the transformation's main loop.
 
-\begin{listing}[h!tb]
 \begin{clojurecode}
 (defn execute-activity-diagram [ad]
   (let [activity (the (a/all-Activities ad))
@@ -120,34 +117,28 @@ Listing~\vref{lst:execute-activity-diagram} shows the function
         (recur (first (enabled-nodes activity)))))
     trace))
 \end{clojurecode}
-\caption{The main loop of executing activity diagrams}
-\label{lst:execute-activity-diagram}
-\end{listing}
 
 The function queries the single activity in the diagram, creates a new trace,
-and assigns that to the activity.  Then, the activity's variables are
-initialized and its nodes are set running.
+and assigns that to the activity.  The activity's variables are initialized and
+its nodes are set running.
 
 Then, a \code|loop|-\code|recur| iteration\footnote{\code|loop| is not a loop
-  in the sense of Java's \code|for| or \code|while| but a local tail-recursion
-  construct.  The \code|loop| declares variables with their initial bindings,
-  and in the \code|loop|'s body \code|recur| forms may recurse back to the
-  beginning of the \code|loop| providing new bindings for the \code|loop|'s
-  variables.} performs the actual execution of the activity.  The variable
-\code|en| is bound to the first enabled node.  Initially, this is the
-activity's initial node.  As long as there is an enabled node left, it gets
-executed and then added to the trace.  Thereafter, the loop is restarted with
-the next enabled node.  Eventually, there won't be an enabled node left, and
-then the function returns the trace.
+  in the sense of Java's \code|for| or \code|while| but a local tail-recursion.
+  The \code|loop| declares variables with their initial bindings, and in the
+  \code|loop|'s body \code|recur| forms may recurse back to the beginning of
+  the \code|loop| providing new bindings for the \code|loop|'s variables.}
+performs the actual execution of the activity.  Initially, the variable
+\code|en| is bound to the activity's initial node, which gets executed and
+added to the trace.  Thereafter, the loop is restarted with the next enabled
+node.  Eventually, there won't be an enabled node left, and then the function
+returns the trace.
 
-So the first step in the execution of an activity is the initialization of its
+The first step in the execution of an activity is the initialization of its
 local and input variables.  The corresponding function \code|init-variables| is
-shown in listing \vref{lst:init-variables}.  For locals, their current value is
-set to their initial value if there is one defined.  For input variables, their
-current value is set to the value of the input's corresponding input value
-element.
+shown in the next listing.  For locals, their current value is set to their
+initial value if there is one defined.  For input variables, their current
+value is set to the value of the input's corresponding input value element.
 
-\begin{listing}[h!tb]
 \begin{clojurecode}
 (defn init-variables [activity input]
   (doseq [lv (a/->locals activity)]
@@ -157,13 +148,9 @@ element.
     (when-let [val (a/->value iv)]
       (a/->set-currentValue! (a/->variable iv) val))))
 \end{clojurecode}
-\caption{Initialization of variables}
-\label{lst:init-variables}
-\end{listing}
 
 After initializing the variables, the main function sets the activity's nodes
-running, and the main loop starts with the activity's initial node which will
-be executed.
+running, and the main loop starts with the activity's initial node.
 
 For different kinds of activity nodes, different execution semantics have to be
 encoded.  This is exactly the use-case of FunnyQT's polymorphic functions
@@ -175,17 +162,15 @@ implementation\footnote{Polyfns support multiple inheritance.  In case of an
   ambiguity during dispatch, e.g., two or more inherited implementations are
   applicable, an error is signaled.}.
 
-Listing \vref{lst:exec-node-initial-node} shows the declaration of the polyfn
-\code|exec-node| and its implementation for initial nodes.  The declaration
-only defines the name of the polyfn and the number of its arguments (just one,
-here).  The implementation for initial nodes simply offers one new control
-token to the initial node's outgoing control flow edge.\footnote{The FunnyQT
-  function \code|the| is similar to Clojure's \code|first| except that it
-  signals an error if the given collection contains zero or more than one
-  element.  Thus, it makes the assumption that there must be only one outgoing
-  control flow explicit.}
+The next listing shows the declaration of the polyfn \code|exec-node| and its
+implementation for initial nodes.  The declaration only defines the name of the
+polyfn and the number of its arguments (just one, here).  The implementation
+for initial nodes simply offers one new control token to the initial node's
+outgoing control flow edge.\footnote{The FunnyQT function \code|the| is similar
+  to Clojure's \code|first| except that it signals an error if the given
+  collection contains zero or more than one element.  Thus, it makes the
+  assumption that there must be only one outgoing control flow explicit.}
 
-\begin{listing}[h!tb]
 \begin{clojurecode}
 (declare-polyfn exec-node [node])
 
@@ -199,21 +184,16 @@ token to the initial node's outgoing control flow edge.\footnote{The FunnyQT
 (defpolyfn exec-node InitialNode [i]
   (offer-one-ctrl-token i))
 \end{clojurecode}
-\caption{Declaration of polyfn \code|exec-node| and its implementation for initial nodes}
-\label{lst:exec-node-initial-node}
-\end{listing}
 
-Listing \vref{lst:exec-node-join-merge-decision-node} shows the
-\code|exec-node| implementations for join, merge, and decision nodes.  Join and
-Merge nodes simply consume their input offers and pass the tokens they have
-been offered on all outgoing control flows.  Decision nodes act similar but
-offer their input tokens only on the outgoing control flow whose guard
-variable's current value is true\footnote{\code|(the predicate collection)|
-  returns the single element of the collection for which the predicate returns
-  true.  If there is no or more elements satisfying the predicate, an error is
-  signaled.}.
+The following listing shows the \code|exec-node| implementations for join,
+merge, and decision nodes.  Join and Merge nodes simply consume their input
+offers and pass the tokens they have been offered on all outgoing control
+flows.  Decision nodes act similar but offer their input tokens only on the
+outgoing control flow whose guard variable's current value is
+true\footnote{\code|(the predicate collection)| returns the single element of
+  the collection for which the predicate returns true.  If there is no or more
+  elements satisfying the predicate, an error is signaled.}.
 
-\begin{listing}[h!tb]
 \begin{clojurecode}
 (defn pass-tokens
   ([n] (pass-tokens n nil))
@@ -235,20 +215,16 @@ variable's current value is true\footnote{\code|(the predicate collection)|
   (pass-tokens dn (the #(-> % a/->guard a/->currentValue a/value)
                        (a/->outgoing dn))))
 \end{clojurecode}
-\caption{\code|exec-node| impls for join, merge, and decision nodes}
-\label{lst:exec-node-join-merge-decision-node}
-\end{listing}
 
 So how does a node consume offers?  This is defined by the
-\code|consume-offers| function shown in listing \vref{lst:consume-offers}.
-First, the offers and the tokens offered by them are calculated.  Then, the
-offered tokens are divided into control and forked tokens.  For control tokens,
-their holder is unset.  For forked tokens, the corresponding base token's
-holder is unset.  The forked tokens' \textsf{remainingOffersCount} is
-decremented.  If it has become zero then, the forked token is removed from its
-holder.  Lastly, the offers are deleted, and the incoming tokens are returned.
+\code|consume-offers| function shown in the following listing.  First, the
+offers and the tokens offered by them are calculated.  Then, the offered tokens
+are divided into control and forked tokens.  For control tokens, their holder
+is unset.  For forked tokens, the corresponding base token's holder is unset.
+The forked tokens' \textsf{remainingOffersCount} is decremented.  If it has
+become zero then, the forked token is removed from its holder.  Lastly, the
+offers are deleted, and the incoming tokens are returned.
 
-\begin{listing}[h!tb]
 \begin{clojurecode}
 (defn consume-offers [node]
   (let [offers    (mapcat a/->offers (a/->incoming node))
@@ -266,20 +242,16 @@ holder.  Lastly, the offers are deleted, and the incoming tokens are returned.
     (mapc edelete! offers)
     tokens))
 \end{clojurecode}
-\caption{Consuming offers}
-\label{lst:consume-offers}
-\end{listing}
 
 The remaining kinds of activity nodes are fork nodes, activity final nodes and
-opaque actions.  Their \code|exec-node| implementations are printed in listing
-\vref{lst:exec-node-final-opaque}.
+opaque actions.  Their \code|exec-node| implementations are printed in the next
+listing.
 
 A fork node consumes its offers and creates one forked token per incoming
 token.  The incoming tokens are set as the forked tokens' base tokens, and the
 remaining offers count is set to the number of outgoing control flows.  All
 created forked tokens are offered on each outgoing control flow.
 
-\begin{listing}[h!tb]
 \begin{clojurecode}
 (defpolyfn exec-node ForkNode [fn]
   (let [in-toks  (consume-offers fn)
@@ -292,6 +264,7 @@ created forked tokens are offered on each outgoing control flow.
     (doseq [out-cf out-cfs]
       (a/->add-offers! out-cf (a/create-Offer!
                                nil {:offeredTokens out-toks})))))
+
 (defpolyfn exec-node ActivityFinalNode [afn]
   (consume-offers afn)
   (mapc #(a/set-running! % false)
@@ -302,9 +275,6 @@ created forked tokens are offered on each outgoing control flow.
   (mapc eval-exp (a/->expressions oa))
   (offer-one-ctrl-token oa))
 \end{clojurecode}
-\caption{\code|exec-node| impls for activity final nodes and opaque actions}
-\label{lst:exec-node-final-opaque}
-\end{listing}
 
 An activity final node simply consumes all offers and then sets the
 \textsf{running} attribute of all nodes contained by the executed activity to
@@ -312,18 +282,16 @@ false.  An opaque action also consumes all offers, then evaluates all its
 expressions in sequence using the \code|eval-exp| function, and finally offers
 one single control token on the outgoing control flow.
 
-How an expression is evaluated depends on (1) the type of the and (2) on the
-value of its \textsf{operator} attribute.  The expression's type is only
-important in order to separate unary from binary expressions, and the operator
-defines the semantics.  Therefore, the \code|eval-exp| function shown in
-listing \vref{lst:eval-exp} has a special case for boolean unary expressions
-which negates the expression's current value using \code|not|.  For all binary
-expressions, the map \code|op2fn| mapping from operator enum constants to
-Clojure functions having the semantics of that operator is used.  The function
-determined by looking up the expression's operator is applied to both operands
-to compute the new value.
+How an expression is evaluated depends on (1) its type and (2) on the value of
+its \textsf{operator} attribute.  The expression's type is only important in
+order to separate unary from binary expressions, and the operator defines the
+semantics.  Therefore, the \code|eval-exp| function shown in the next listing
+has a special case for boolean unary expressions which negates the expression's
+current value using \code|not|.  For all binary expressions, the map
+\code|op2fn| mapping from operator enum constants to Clojure functions having
+the semantics of that operator is used.  The function determined by looking up
+the expression's operator is applied to both operands to compute the new value.
 
-\begin{listing}[h!tb]
 \begin{clojurecode}
 (def op2fn {(a/enum-IntegerCalculationOperator-ADD)           +
             (a/enum-IntegerCalculationOperator-SUBRACT)       -
@@ -343,22 +311,16 @@ to compute the new value.
                    (-> exp a/->operand1 a/->currentValue a/value)
                    (-> exp a/->operand2 a/->currentValue a/value)))))
 \end{clojurecode}
-\caption{Evaluation of expressions}
-\label{lst:eval-exp}
-\end{listing}
 
 After executing all enabled nodes, the transformation's main function
-\code|execute-activity-diagram| from listing
-\vref{lst:execute-activity-diagram} recomputes the enabled nodes and resumes
-the execution.  The enabled nodes are computed by the \code|enabled-nodes|
-function shown in listing \vref{lst:enabled-nodes}.  The enabled nodes are
-those nodes of a given activity which are set running, are no initial
-nodes\footnote{Initial nodes have to be excluded because if they are set
-  running, all of their (zero) incoming control flows have offers.}, and
-receive an offer on each incoming control flow, or, in the case of a merge
-node, on one incoming control flow.
+\code|execute-activity-diagram| recomputes the enabled nodes and resumes the
+execution.  The enabled nodes are computed by the \code|enabled-nodes| function
+shown in the following listing.  The enabled nodes are those nodes of a given
+activity which are set running, are no initial nodes\footnote{Initial nodes
+  have to be excluded because if they are set running, all of their (zero)
+  incoming control flows have offers.}, and receive an offer on each incoming
+control flow, or, in the case of a merge node, on one incoming control flow.
 
-\begin{listing}[h!tb]
 \begin{clojurecode}
 (defn enabled-nodes [activity]
   (filter (fn [n]
@@ -368,11 +330,8 @@ node, on one incoming control flow.
                   #(seq (a/->offers %)) (a/->incoming n))))
           (a/->nodes activity)))
 \end{clojurecode}
-\caption{Computation of enabled nodes}
-\label{lst:enabled-nodes}
-\end{listing}
 
-These 102 NCLOC of algorithmic FunnyQT/Clojure code implement the complete
+These 101 NCLOC of algorithmic FunnyQT/Clojure code implement the complete
 operational semantics of UML Activity Diagrams (with the exception of data
 flows which has not been demanded by the case description).
 
@@ -386,8 +345,7 @@ The solution comes with a test suite, and during the official evaluation
 achieved a full \emph{correctness} score winning the \emph{most correct
   solution award}.
 
-
-With 102 lines of non-commented source code, the FunnyQT solution is quite
+With 101 lines of non-commented source code, the FunnyQT solution is quite
 \emph{concise}.  Of course, \emph{understandability} is a very subjective
 measure measure.  The solution should be evident for any Clojure programmer but
 even without prior Clojure knowledge, the solution shouldn't be hard to follow
@@ -427,7 +385,7 @@ Activity Diagrams with the exception of object flows which haven't been
 considered in this case.
 
 The solution achieved the full score with respect to correctness and won the
-most correct solution award.  With 102 NCLOC, the specification is very
+most correct solution award.  With 101 NCLOC, the specification is very
 concise.  It is also well-understandable given that it is an almost literal
 translation of the case description to functions and one polymorphic function.
 These functions use a metamodel-specific API which FunnyQT has generated from
