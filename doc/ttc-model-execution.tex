@@ -31,11 +31,6 @@
   i.e., it considers and implements the execution semantics of the complete UML
   Activity Diagram language.  The solution won the \emph{most correct solution
     award}.
-
-  FunnyQT is a model querying and model transformation library for the
-  functional Lisp-dialect Clojure providing a comprehensive and efficient
-  querying and transformation API, many parts of which are provided as
-  task-oriented embedded DSLs.
 \end{abstract}
 
 
@@ -83,18 +78,17 @@ The FunnyQT solution tries to be almost a literal translation of the case
 description to Clojure code.
 
 FunnyQT is able to generate metamodel-specific model management APIs.  This
-feature has been used for solving this case.  The generated API consists of
-element creation functions, lazy element sequence functions, attribute access
-functions, and reference access functions.  For example,
-\code|(a/create-ControlToken! ad)| creates a new control token and adds it to
-the activity diagram model \code|ad|, \code|(a/isa-Token? x)| returns true if
-and only if \code|x| is a token, \code|(a/all-Inputs ad)| returns the lazy
-sequence of input elements in \code|ad|, \code|(a/running? n)| and
-\code|(a/set-running! n true)| query and set the node \code|n|'s
-\textsf{running} attribute, and \code|(a/->locals a)|, \code|(a/->set-locals! a
-ls)|, \code|(a/->add-locals! a l)|, and \code|(a/->remove-locals! a l)| query,
-set, add to, and remove from the \textsf{locals} reference of the activity
-\code|a|.
+feature has been used here.  The generated API consists of element creation
+functions, lazy element sequence functions, attribute access functions, and
+reference access functions.  E.g., \code|(a/create-ControlToken!  ad)| creates
+a new control token and adds it to the activity diagram model \code|ad|,
+\code|(a/isa-Token? x)| returns true if and only if \code|x| is a token,
+\code|(a/all-Inputs ad)| returns the lazy sequence of input elements in
+\code|ad|, \code|(a/running? n)| and \code|(a/set-running! n true)| query and
+set the node \code|n|'s \textsf{running} attribute, and \code|(a/->locals a)|,
+\code|(a/->set-locals! a ls)|, \code|(a/->add-locals! a l)|, and
+\code|(a/->remove-locals! a l)| query, set, add to, and remove from the
+\textsf{locals} reference of the activity \code|a|.
 
 \bigskip{}
 
@@ -216,14 +210,13 @@ true\footnote{\code|(the predicate collection)| returns the single element of
                        (a/->outgoing dn))))
 \end{clojurecode}
 
-So how does a node consume offers?  This is defined by the
-\code|consume-offers| function shown in the following listing.  First, the
-offers and the tokens offered by them are calculated.  Then, the offered tokens
+How offers are consumed is defined by the \code|consume-offers| function shown
+below.  The offers and their tokens are calculated.  Then, the offered tokens
 are divided into control and forked tokens.  For control tokens, their holder
 is unset.  For forked tokens, the corresponding base token's holder is unset.
 The forked tokens' \textsf{remainingOffersCount} is decremented.  If it has
-become zero then, the forked token is removed from its holder.  Lastly, the
-offers are deleted, and the incoming tokens are returned.
+become zero, the forked token is removed from its holder.  Lastly, the offers
+are deleted, and the incoming tokens are returned.
 
 \begin{clojurecode}
 (defn consume-offers [node]
@@ -335,11 +328,8 @@ These 101 NCLOC of algorithmic FunnyQT/Clojure code implement the complete
 operational semantics of UML Activity Diagrams (with the exception of data
 flows which has not been demanded by the case description).
 
-\section{Evaluation}
+\section{Evaluation \& Conclusion}
 \label{sec:evaluation}
-
-In this section, the FunnyQT solution is evaluated according to the criteria
-stated in the case description.
 
 The solution comes with a test suite, and during the official evaluation
 achieved a full \emph{correctness} score winning the \emph{most correct
@@ -375,28 +365,10 @@ When compared with the reference Java solution, the FunnyQT solution is
 slightly faster for all normal and performance test models, and about 8 times
 faster for the \emph{performance-variant-3-1} model.
 
-
-\section{Conclusion}
-\label{sec:conclusion}
-
-In this paper, the FunnyQT solution to the TTC 2015 Model Execution case has
-been discussed.  The solution implements the full operational semantics of UML
-Activity Diagrams with the exception of object flows which haven't been
-considered in this case.
-
-The solution achieved the full score with respect to correctness and won the
-most correct solution award.  With 101 NCLOC, the specification is very
-concise.  It is also well-understandable given that it is an almost literal
-translation of the case description to functions and one polymorphic function.
-These functions use a metamodel-specific API which FunnyQT has generated from
-the activity diagram metamodel.  Also the performance is quite good.  In
-general, its execution times are very similar to those of the Java reference
-solution, and for two of the performance test models, the FunnyQT solution is
-in fact several times faster.
-
 Overall, FunnyQT seems to be very adequate for defining model interpreters.
 Especially its polymorphic function facility has been explicitly designed for
 these kinds of tasks.
+
 
 \bibliographystyle{eptcs}
 \bibliography{ttc-model-execution}
