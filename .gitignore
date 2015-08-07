@@ -19,3 +19,5 @@ doc/auto/
 doc/_minted-ttc-model-execution/
 *.bbl
 *.blg
+doc/_region_.*
+doc/_minted-_region_/

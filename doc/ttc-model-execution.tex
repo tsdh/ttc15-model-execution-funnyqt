@@ -29,7 +29,8 @@
   This paper describes the FunnyQT solution to the TTC 2015 Model Execution
   transformation case.  The solution solves the third variant of the case,
   i.e., it considers and implements the execution semantics of the complete UML
-  Activity Diagram language.
+  Activity Diagram language.  The solution won the \emph{most correct solution
+    award}.
 
   FunnyQT is a model querying and model transformation library for the
   functional Lisp-dialect Clojure providing a comprehensive and efficient
@@ -48,7 +49,8 @@ case description, i.e., it implements the execution semantics of the complete
 UML Activity Diagram language.  The solution project is available on
 Github\footnote{\url{https://github.com/tsdh/ttc15-model-execution-funnyqt}},
 and it is set up for easy reproduction on a SHARE image\footnote{The SHARE
-  image name is \verb|ArchLinux64_TTC15-FunnyQT_2|}.
+  image name is \verb|ArchLinux64_TTC15-FunnyQT_2|}.  The solution has won the
+\emph{most correct solution award}.
 
 FunnyQT is a model querying and transformation library for the functional Lisp
 dialect Clojure\footnote{\url{http://clojure.org}}.  Queries and
@@ -66,35 +68,14 @@ JGraLab\footnote{\url{http://jgralab.github.io}} TGraph models.  Support for
 other modeling frameworks can be added without having to touch FunnyQT's
 internals.
 
-The FunnyQT API is structured into the following namespaces, each namespace
-providing constructs supporting concrete querying and transformation use-cases:
+The FunnyQT API is structured into several namespaces, each namespace providing
+constructs supporting concrete querying and transformation use-cases, e.g.,
+model management, functional querying, polymorphic functions, relational
+querying, pattern matching, in-place transformations, out-place
+transformations, bidirectional transformations, and some more.
 
-\begin{compactdesc}
-\item[funnyqt.emf] EMF-specific model management API
-\item[funnyqt.tg] JGraLab/TGraph-specific model management API
-\item[funnyqt.generic] Protocol-based, generic model management API
-\item[funnyqt.query] Generic querying constructs such as quantified expressions
-  or regular path expressions
-\item[funnyqt.polyfns] Constructs for defining polymorphic functions
-  dispatching on metamodel types
-\item[funnyqt.pmatch] Pattern matching constructs
-\item[funnyqt.relational] Constructs for logic-based, relational model querying
-  inspired by Prolog
-\item[funnyqt.in-place] In-place transformation rule definition constructs
-\item[funnyqt.model2model] Out-place transformation definition constructs
-  similar to ATL or QVT Operational Mappings
-\item[funnyqt.extensional] Transformation API similar to GReTL
-\item[funnyqt.bidi] Constructs for defining bidirectional transformations
-  similar to QVT Relations
-\item[funnyqt.coevo] Constructs for transformations that evolve a metamodel and
-  a conforming model simultaneously at runtime
-\item[funnyqt.visualization] Model visualization
-\item[funnyqt.xmltg] Constructs for querying and modifying XML files as models
-  conforming to a DOM-like metamodel
-\end{compactdesc}
-
-For solving the model execution case, the \emph{funnyqt.emf},
-\emph{funnyqt.query}, and \emph{funnyqt.polyfns} namespaces have been used.
+For solving the model execution case, only the model management, the functional
+querying, and the polymorphic functions APIs have been used.
 
 
 \section{Solution Description}
@@ -105,19 +86,9 @@ Activity Diagrams suggest an algorithmic solution to the transformation case.
 The FunnyQT solution tries to be almost a literal translation of the case
 description to Clojure code.
 
-The first line of the solution calls the \code|generate-ecore-model-functions|
-FunnyQT macro.
-
-\begin{clojurecode}
-(generate-ecore-model-functions "activitydiagram.ecore" ttc15-model-execution-funnyqt.ad a)
-\end{clojurecode}
-
-As its name suggests, it generates a metamodel-specific API.  This API is
-generated into the namespace \code|ttc15-model-execution-funnyqt.ad|, and the
-namespace alias \code|a| is used to refer to that namespace from the current
-one.
-
-The generated API consists of element creation functions, lazy element sequence
+FunnyQT is able to generate metamodel-specific model management APIs for a
+given metamodel.  This feature has been used for solving this case.  The
+generated API consists of element creation functions, lazy element sequence
 functions, attribute access functions, and reference access functions.  For
 example, \code|(a/create-ControlToken! ad)| creates a new control token and
 adds it to the activity diagram model \code|ad|, \code|(a/isa-Token? x)|
@@ -128,17 +99,6 @@ and \code|(a/set-running! n true)| query and set the node \code|n|'s
 ls)|, \code|(a/->add-locals! a l)|, and \code|(a/->remove-locals! a l)| query,
 set, add to, and remove from the \textsf{locals} reference of the activity
 \code|a|.
-
-Metamodel-specific APIs created by the \code|generate-ecore-model-functions|
-macro are independent of the underlying implementation kind.  The FunnyQT
-solution uses a dynamic instance model but it would work equivalently if it was
-run with an EMF model using classes generated for the metamodel's generator
-model.
-
-Instead of using the generated API, the solution could also use the generic EMF
-API in which case the lazy sequence of a activity diagram models inputs would
-be retrieved using \code|(eallcontents ad 'Input)|.  But the generated API is
-slightly more concise and readable.
 
 \bigskip{}
 
