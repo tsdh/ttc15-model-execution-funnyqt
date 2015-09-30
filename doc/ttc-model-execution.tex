@@ -8,9 +8,12 @@
 \usepackage{url}
 \usepackage{paralist}
 \usepackage{graphicx}
+\usepackage{relsize}
 \usepackage[cache]{minted}
-\newminted{clojure}{fontsize=\fontsize{9}{9},linenos,numbersep=3pt,numberblanklines=false,firstnumber=last}
-\newmintinline{clojure}{fontsize=\small}
+\setminted{fontsize=\fontsize{9}{9},breaklines=true,breakbytoken=true,autogobble,linenos,numbersep=3pt,numberblanklines=false,firstnumber=last}
+\setmintedinline{fontsize=\relscale{.9},breaklines=true,breakbytoken=true}
+\newminted{clojure}{}
+\newmintinline{clojure}{}
 \newcommand{\code}{\clojureinline}
 \VerbatimFootnotes
 
@@ -80,17 +83,18 @@ description to Clojure code.
 FunnyQT is able to generate metamodel-specific model management APIs.  This
 feature has been used here.  The generated API consists of element creation
 functions, lazy element sequence functions, attribute access functions, and
-reference access functions.  E.g., \code|(a/create-ControlToken!  ad)| creates
-a new control token and adds it to the activity diagram model \code|ad|,
+reference access functions.  E.g., \code|(a/create-ControlToken! ad)| creates a
+new control token and adds it to the activity diagram model \code|ad|,
 \code|(a/isa-Token? x)| returns true if and only if \code|x| is a token,
 \code|(a/all-Inputs ad)| returns the lazy sequence of input elements in
 \code|ad|, \code|(a/running? n)| and \code|(a/set-running! n true)| query and
 set the node \code|n|'s \textsf{running} attribute, and \code|(a/->locals a)|,
 \code|(a/->set-locals! a ls)|, \code|(a/->add-locals! a l)|, and
 \code|(a/->remove-locals! a l)| query, set, add to, and remove from the
-\textsf{locals} reference of the activity \code|a|.
-
-\bigskip{}
+\textsf{locals} reference of the activity \code|a|\footnote{The \code|a/|
+  prefix denotes a namespace into which the API has been generated.  The API
+  accesses models only using EMF's generic interfaces, thus this feature does
+  not depend on code generation on the EMF side.}.
 
 In the following, the solution is presented in a top-down manner similar to how
 the case description defines the operational semantics of activity diagrams.
@@ -129,9 +133,8 @@ returns the trace.
 
 The first step in the execution of an activity is the initialization of its
 local and input variables.  The corresponding function \code|init-variables| is
-shown in the next listing.  For locals, their current value is set to their
-initial value if there is one defined.  For input variables, their current
-value is set to the value of the input's corresponding input value element.
+shown below.  Local variables are set to their initial values, and input
+variables are set to the input values.
 
 \begin{clojurecode}
 (defn init-variables [activity input]
